@@ -7,8 +7,6 @@ if parent_dir not in sys.path:
 
 from config import EPSILON, is_zero, zero_rectify
 
-from config import EPSILON, is_zero, zero_rectify
-
 def inverse(A: list[list[float]]) -> list[list[float]]:
     n = len(A)
     # Kiểm tra ma trận vuông
