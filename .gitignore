@@ -1,5 +1,8 @@
 temp_pip_list.txt
 temp_pip_list_utf8.txt
+.idea/
+__pycache__/
+**/__pycache__/
 .venv/
 venv/
 env/
