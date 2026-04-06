@@ -95,7 +95,7 @@ def compare_matrices(M1, M2):
     return True
 
 
-def run_tests():
+def test_rank_and_basis():
     test_cases = [
         {
             "name": "Ma trận đơn vị 3x3 (Full Rank)",
