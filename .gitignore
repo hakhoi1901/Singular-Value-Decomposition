@@ -1,3 +1,5 @@
+__pycache__/
+*.py[cod]
 temp_pip_list.txt
 temp_pip_list_utf8.txt
 .venv/
