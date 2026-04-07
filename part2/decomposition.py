@@ -432,3 +432,6 @@ def test_decompose_svd() -> None:
                 print(f"=> PASSED (Bắt đúng lỗi mong đợi: {e})")
             else:
                 print(f"=> FAILED: Lỗi ngoài mong đợi: {e}")
+
+if __name__ == "__main__":
+    test_decompose_svd()
