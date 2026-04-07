@@ -1,5 +1,5 @@
 # Hằng số epsilon để xử lý sai số số thực
-EPSILON = 1e-12
+EPSILON = 1e-15
 
 def is_zero(x):
     """

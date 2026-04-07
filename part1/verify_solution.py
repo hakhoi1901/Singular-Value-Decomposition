@@ -1,4 +1,11 @@
 import math
+import os
+import sys
+
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if parent_dir not in sys.path:
+    sys.path.append(parent_dir)
+
 from config import zero_rectify
 
 
@@ -72,3 +79,6 @@ def test_verify_solution():
             assert e < 1e-10
         elif case.get("should_be_large"):
             assert e > 1.0
+
+if __name__ == "__main__":
+    test_verify_solution()

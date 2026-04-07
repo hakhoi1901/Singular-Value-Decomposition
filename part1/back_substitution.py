@@ -13,22 +13,22 @@ if str(_ROOT) not in sys.path:
 from config import is_zero
 
 
-def back_substitution(U: list[list[float]]) -> list[float]:
+def back_substitution(U: list[list[float]], c: list[float]) -> list[float]:
     """
-    Giải Ux = c từ dưới lên.
+    Giải hệ phương trình tam giác trên Ux = c từ dưới lên.
 
-    Tham số U là ma trận tăng cường: mỗi dòng có dạng
-    (u_i0, u_i1, …, u_{i,n-1}, c_i), tức n cột hệ số tam giác trên + 1 cột vế phải.
+    Tham số:
+    - U: Ma trận tam giác trên vuông kích thước n x n
+    - c: Vector vế phải kích thước n
     """
     if not U:
         return []
 
     n = len(U)
-    width = len(U[0])
-    if width != n + 1:
-        raise ValueError("Each row of U must have length n+1 (augmented [coefficients | RHS])")
-    if any(len(row) != width for row in U):
-        raise ValueError("All rows of U must have the same length")
+    if any(len(row) != n for row in U):
+        raise ValueError("Matrix U must be square (n x n)")
+    if len(c) != n:
+        raise ValueError("Vector c must have the same length as U")
 
     x = [0.0] * n
 
@@ -36,7 +36,7 @@ def back_substitution(U: list[list[float]]) -> list[float]:
         if is_zero(U[i][i]):
             raise ValueError("Matrix is singular")
 
-        s = U[i][n]
+        s = c[i]
         for j in range(i + 1, n):
             s -= U[i][j] * x[j]
         x[i] = s / U[i][i]

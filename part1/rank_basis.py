@@ -136,7 +136,7 @@ def test_rank_and_basis():
         {
             "name": "Ma trận số thực cực nhỏ (< EPSILON)",
             "input": [[1, 2], [0, 1e-15]],
-            "exp_rank": 1,  # Phải coi 1e-15 là 0
+            "exp_rank": 1,
             "exp_null_dim": 1
         },
         {
@@ -162,3 +162,6 @@ def test_rank_and_basis():
             assert len(null_b) == case['exp_null_dim'], f"Sai Null Basis dim: kỳ vọng {case['exp_null_dim']}"
 
         print("=> PASSED")
+
+if __name__ == "__main__":
+    test_rank_and_basis()

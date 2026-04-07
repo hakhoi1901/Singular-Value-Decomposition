@@ -125,3 +125,6 @@ def test_inverse():
                 print(f"=> PASSED (Caught expected error: {e})")
             else:
                 print(f"=> FAILED: Unexpected error {e}")
+
+if __name__ == "__main__":
+    test_inverse()

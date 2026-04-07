@@ -77,3 +77,4 @@ def gaussian_eliminate(A: list[list[float]], b: list[float]):
     U = [row[:n] for row in M]
     c = [row[n] for row in M]
     return U, c, swap_count
+
