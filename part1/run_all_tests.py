@@ -20,22 +20,22 @@ from inverse import test_inverse
 def run_tests():
     print("TESTING")
 
-    print("\n--- Gaussian eliminate ---")
+    print("\n=== [Gaussian eliminate] ===")
     test_gaussian_eliminate()
 
-    print("\n--- Back substitution ---")
+    print("\n=== [Back substitution] ===")
     test_back_substitution()
 
-    print("\n--- Determinant ---")
+    print("\n=== [Determinant] ===")
     test_determinant()
 
-    print("\n--- Testing Verify Solution ---")
+    print("\n=== [Testing Verify Solution] ===")
     test_verify_solution()
 
-    print("\n--- Testing Rank and Basis ---")
+    print("\n=== [Testing Rank and Basis] ===")
     test_rank_and_basis()
 
-    print("\n--- Testing Inverse ---")
+    print("\n=== [Testing Inverse] ===")
     test_inverse()
 
 if __name__ == "__main__":

@@ -137,17 +137,18 @@ def test_determinant():
     ]
 
     for case in test_cases:
-        print(f"[determinant] {case['name']}")
+        print(f"  - {case['name']}")
         try:
             d = determinant(case["A"])
             if case.get("should_raise"):
                 assert False, "expected ValueError"
             assert abs(d - case["expected"]) < 1e-7, f"got {d}, want {case['expected']}"
-            print("  PASSED")
+            print("    => PASSED")
         except ValueError as err:
             if case.get("should_raise") == ValueError:
-                print(f"  PASSED ({err})")
+                print(f"    => PASSED (Caught expected error: {err})")
             else:
+                print(f"    => FAILED: Unexpected error {err}")
                 raise
 
 

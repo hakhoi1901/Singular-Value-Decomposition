@@ -1,0 +1,33 @@
+TESTING
+
+=== [Gaussian eliminate] ===
+  - Don vi 2x2
+    => PASSED (e = 0.00e+00)
+  - He 2x2 (partial pivot doi dong 1 lan)
+    => PASSED (e = 0.00e+00)
+  - Hoan vi [[0,1],[1,0]]
+    => PASSED (e = 0.00e+00)
+  - 3x3 cung ma tran test inverse
+    => PASSED (e = 0.00e+00)
+  - 4x4 cheo troi (nghiem don gian)
+    => PASSED (e = 0.00e+00)
+  - Cot dau tien gan 0 — can chon chot xa hon
+    => PASSED (e = 0.00e+00)
+  - Suy bien [[1,2],[2,4]] + b nhat quan (in + khong nghiem duy nhat)
+    => FAILED: Unexpected error 'charmap' codec can't encode character '\u1ea1' in position 16: character maps to <undefined>
+
+---
+Traceback (most recent call last):
+  File "D:\Code\01_University\2526-HK2\Singular Value Decomposition\part1\run_all_tests.py", line 42, in <module>
+    run_tests()
+  File "D:\Code\01_University\2526-HK2\Singular Value Decomposition\part1\run_all_tests.py", line 24, in run_tests
+    test_gaussian_eliminate()
+  File "D:\Code\01_University\2526-HK2\Singular Value Decomposition\part1\gaussian.py", line 188, in test_gaussian_eliminate
+    U, c, swaps = gaussian_eliminate(case["A"], case["b"])
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Code\01_University\2526-HK2\Singular Value Decomposition\part1\gaussian.py", line 69, in gaussian_eliminate
+    print(f"Không có pivot t\u1ea1i c\u1ed9t {j + 1}")
+  File "C:\Users\Hakhoi\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u1ea1' in position 16: character maps to <undefined>

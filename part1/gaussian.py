@@ -17,6 +17,7 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from config import is_zero, zero_rectify
+from back_substitution import back_substitution
 
 
 def gaussian_eliminate(A: list[list[float]], b: list[float]):
@@ -33,7 +34,7 @@ def gaussian_eliminate(A: list[list[float]], b: list[float]):
 
     Returns:
         U: ma trận hệ số sau biến đổi (m × n), dạng bậc thang dòng
-        c: vector vế phải sau biến đổi (độ dài m)
+        x: vector nghiệm (độ dài n), trả về [] nếu vô số nghiệm hoặc vô nghiệm
         swap_count: số lần hoán đổi dòng
     """
     if not A:
@@ -93,12 +94,18 @@ def gaussian_eliminate(A: list[list[float]], b: list[float]):
 
     U = [row[:n] for row in M]
     c = [row[n] for row in M]
-    return U, c, swap_count
+    
+    if m == n:
+        x = back_substitution(U, c)
+    else:
+        x = []
+
+    return U, x, swap_count
 
 
 def _is_upper_triangular(U: list[list[float]], tol: float = 1e-9) -> bool:
     n = len(U)
-    for i in range(1, n):
+    for i in range(1, min(n, len(U[0]))):
         for j in range(i):
             if abs(U[i][j]) > tol:
                 return False
@@ -114,7 +121,6 @@ def test_gaussian_eliminate():
     if _parent not in sys.path:
         sys.path.insert(0, _parent)
 
-    from back_substitution import back_substitution
     from verify_solution import verify_solution
 
     warnings.simplefilter("ignore", UserWarning)
@@ -163,7 +169,7 @@ def test_gaussian_eliminate():
             "b": [3.0, 3.0],
         },
         {
-            "name": "Suy bien [[1,2],[2,4]] + b nhat quan (in + khong nghiem duy nhat)",
+            "name": "Suy bien [[1,2],[2,4]] + b nhat quan",
             "A": [[1.0, 2.0], [2.0, 4.0]],
             "b": [1.0, 2.0],
             "expect_non_unique": True,
@@ -183,36 +189,42 @@ def test_gaussian_eliminate():
     ]
 
     for case in test_cases:
-        print(f"[gaussian_eliminate] {case['name']}")
+        print(f"  - {case['name']}")
         try:
-            U, c, swaps = gaussian_eliminate(case["A"], case["b"])
+            U, x, swaps = gaussian_eliminate(case["A"], case["b"])
+            
             if case.get("should_raise"):
                 assert False, "expected ValueError"
+                
             if not case.get("skip_backsub"):
                 assert _is_upper_triangular(U), "U phai tam giac tren (he vuong day du hang)"
+                
             if "expect_swaps" in case:
                 assert swaps == case["expect_swaps"], f"swap_count={swaps}"
+                
             if case.get("skip_backsub"):
-                print("  PASSED")
+                print("    => PASSED")
                 continue
+                
             if case.get("expect_non_unique"):
-                x = back_substitution(U, c)
-                assert x == []
-                print("  PASSED")
+                assert x == [], "Expected empty solution for non-unique system"
+                print("    => PASSED")
                 continue
-            x = back_substitution(U, c)
+                
             if "expect_x" in case:
                 for i, v in enumerate(case["expect_x"]):
                     assert abs(x[i] - v) < 1e-8, f"x[{i}]={x[i]}"
+                    
             e = verify_solution(case["A"], x, case["b"])
             assert e < 1e-8, f"||b-Ax||={e}"
-            print("  PASSED")
+            print(f"    => PASSED (e = {e:.2e})")
+            
         except ValueError as err:
             if case.get("should_raise") == ValueError:
-                print(f"  PASSED ({err})")
+                print(f"    => PASSED (Caught expected error: {err})")
             else:
+                print(f"    => FAILED: Unexpected error {err}")
                 raise
-
 
 if __name__ == "__main__":
     test_gaussian_eliminate()
