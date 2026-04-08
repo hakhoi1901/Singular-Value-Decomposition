@@ -14,14 +14,14 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from config import is_zero, zero_rectify
+# IMPORT HÀM GAUSS ĐÃ VIẾT (Tận dụng code cũ)
+from gaussian import gaussian_eliminate
 
 
 def determinant(A: list[list[float]]) -> float:
     """
     Tính det(A) với A ∈ R^(n×n) bằng khử Gauss có chọn phần tử chốt.
-
-    Nếu tại bước k không có pivot (cột k toàn ~0 từ hàng k trở xuống), in thông báo
-    và trả về 0. Ma trận suy biến cho det = 0.
+    Sử dụng lại hàm gaussian_eliminate đã được test kỹ lưỡng.
     """
     if not A:
         return 1.0
@@ -30,44 +30,28 @@ def determinant(A: list[list[float]]) -> float:
     if any(len(row) != n for row in A):
         raise ValueError("A phải vuông (n × n) để tính định thức")
 
-    M = [list(map(float, row)) for row in A]
-    swap_count = 0
+    # Tạo vector b giả (toàn số 0) để đưa vào hàm gaussian_eliminate
+    b_dummy = [0.0] * n
+    
+    # Dùng hàm khử Gauss chuẩn của nhóm
+    U, _, swap_count = gaussian_eliminate(A, b_dummy)
 
-    for k in range(n):
-        p = k
-        best = abs(M[k][k])
-        for i in range(k + 1, n):
-            v = abs(M[i][k])
-            if v > best:
-                best = v
-                p = i
-
-        pivot = M[p][k]
-
-        if is_zero(pivot):
-            print(f"Không có pivot tại cột {k + 1}")
-            return 0.0
-
-        if p != k:
-            M[k], M[p] = M[p], M[k]
-            swap_count += 1
-
-        pivot = M[k][k]
-        for i in range(k + 1, n):
-            if is_zero(M[i][k]):
-                continue
-            lik = M[i][k] / pivot
-            for j in range(k, n):
-                M[i][j] -= lik * M[k][j]
-                M[i][j] = zero_rectify(M[i][j])
-
-    det_a = 1.0 if (swap_count % 2 == 0) else -1.0
+    # Tính tích đường chéo
+    det_a = 1.0
     for i in range(n):
-        det_a *= M[i][i]
-    return det_a
+        det_a *= U[i][i]
+        
+    # Áp dụng dấu hoán vị
+    if swap_count % 2 != 0:
+        det_a = -det_a
+        
+    return zero_rectify(det_a)
 
 
 def test_determinant():
+    import warnings
+    warnings.simplefilter("ignore", UserWarning) # Bỏ qua warning pivot nhỏ
+    
     test_cases = [
         {
             "name": "Don vi 2x2",
@@ -128,6 +112,11 @@ def test_determinant():
             "name": "Hang lap — rank 1",
             "A": [[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]],
             "expected": 0.0,
+        },
+        {
+            "name": "Ma trận 3x3 (Đã sửa lại Toán: = 2.0)",
+            "A": [[1, 2, 3], [0, 4, 5], [1, 0, 1]],
+            "expected": 2.0,
         },
         {
             "name": "Khong vuong",
