@@ -16,6 +16,9 @@
 \usepackage{array}
 \usepackage{enumitem} 
 \usepackage{longtable}
+\usepackage{amsmath, amssymb, amsfonts}
+\usepackage{hyperref}
+\usepackage{xurl}
 \setlist{nosep} % Loại bỏ khoảng trắng thừa giữa các dòng
 \setlist[itemize]{leftmargin=*} % Căn lề thông minh cho gạch đầu dòng
 \setlist[enumerate]{leftmargin=*} % Căn lề thông minh cho số thứ tự
@@ -29,6 +32,11 @@
 \definecolor{codegray}{rgb}{0.5,0.5,0.5}
 \definecolor{codepurple}{rgb}{0.58,0,0.82}
 \definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\DeclareMathOperator{\rank}{rank}
+
+\renewcommand{\lstlistlistingname}{Danh mục mã nguồn}
+\renewcommand{\lstlistingname}{Đoạn mã}
 
 \lstdefinestyle{mystyle}{   
     backgroundcolor=\color{backcolour},   
@@ -74,6 +82,12 @@
 \newpage
 
 \listoffigures % Danh mục hình ảnh
+\newpage
+
+\listoftables % Danh sách bảng biểu
+\newpage
+
+\lstlistoflistings % Danh mục mã nguồn
 \newpage
 
 % ==========================================

@@ -32,8 +32,7 @@ def verify_solution(A: list[list[float]], x: list[float], b: list[float]) -> flo
     sum_squares = sum(ri ** 2 for ri in residual_vector)
     e = math.sqrt(sum_squares)
 
-    # Su dung zero_rectify de xu ly neu sai so qua nho (xap xi 0)
-    return zero_rectify(e)
+    return float(e)
 
 
 def test_verify_solution():
@@ -74,12 +73,42 @@ def test_verify_solution():
             "A": [[1, 0, 0], [0, 1, 0]], "x": [3.0, 4.0, 0.0], "b": [3.0, 4.0],
             "use_lstsq": True,
         },
+        {
+            "name": "He 1x1 - Sai so phay dong (0.1 * 3 != 0.3)",
+            "A": [[3.0]], "x": [0.1], "b": [0.3],
+        },{
+            "name": "Nhiễu nhị phân vô hạn (0.1 + 0.2 != 0.3)",
+            "A": [[1.0, 1.0], [1.0, -1.0]], 
+            "x": [0.1, 0.2], 
+            "b": [0.3, -0.1],
+        },
+        {
+            "name": "Chênh lệch hệ số khổng lồ (Scale Disparity)",
+            "A": [[1e15, 1.0], [1.0, 1.0]], 
+            "x": [1.0, 1.0], 
+            "b": [1e15 + 1.0, 2.0],
+        },
+        {
+            "name": "Hệ điều kiện kém (Near-Singular Matrix)",
+            "A": [[1.0, 1.0], [1.0, 1.000000000000001]], 
+            "x": [1.0, 1.0], 
+            "b": [2.0, 2.000000000000001],
+            "expect_instability": True
+        },
+        {
+            "name": "Ma trận Hilbert 3x3 (Vua bất ổn định)",
+            "A": [[1.0, 1/2, 1/3], 
+                  [1/2, 1/3, 1/4], 
+                  [1/3, 1/4, 1/5]], 
+            "x": [1.0, 1.0, 1.0], 
+            "b": [11/6, 13/12, 47/60],
+        }
     ]
 
     print("--- Test verify_solution ---")
-    all_passed = True
+    failed_count = 0  # <--- Dùng biến đếm số test rớt cho chuẩn
 
-    for case in test_cases:
+    for idx, case in enumerate(test_cases):
         e = verify_solution(case['A'], case['x'], case['b'])
         print(f"  - {case['name']}")
 
@@ -88,48 +117,46 @@ def test_verify_solution():
             b_np = np.array(case['b'], dtype=float)
             x_given = np.array(case['x'], dtype=float)
 
-            # ── Dung NumPy GIAI ra nghiem x_np ──────────────────────
             if case.get("use_lstsq"):
-                # He khong vuong: np.linalg.lstsq -> nghiem binh phuong toi tieu
                 x_np, _, _, _ = np.linalg.lstsq(A_np, b_np, rcond=None)
-
-                # Voi he khong vuong: so sanh Ax_given ~ b (khong so sanh x truc tiep
-                # vi lstsq tra ve nghiem toi gian nhat, khac x_given neu x_given co
-                # thanh phan trong null space)
                 Ax_given = A_np @ x_given
-                assert np.allclose(Ax_given, b_np, atol=1e-9), \
-                    f"A*x_given = {np.round(Ax_given,6)} != b = {b_np}"
+                assert np.allclose(Ax_given, b_np, atol=1e-9), f"A*x_given = {np.round(Ax_given,6)} != b = {b_np}"
                 assert e < 1e-9, f"e = {e:.2e} (nen xap xi 0)"
                 print(f"    => PASSED  (A*x_given ~ b [OK via lstsq], e = {e:.2e})")
 
             elif case.get("expect_mismatch"):
-                # x truyen vao SAI -> np.linalg.solve cho x_np khac x_given
                 x_np = np.linalg.solve(A_np, b_np)
                 is_different = not np.allclose(x_np, x_given, atol=1e-9)
                 assert is_different, "x_np bat ngo khop voi x sai!"
                 assert e > 0.5, f"e = {e:.2e} qua nho voi nghiem sai"
                 print(f"    => PASSED  (x sai => x_np != x_given [OK], e = {e:.2e})")
 
-            else:
-                # He vuong, nghiem dung: np.linalg.solve -> x_np ~ x_given
+            # --- KHỐI LỆNH MỚI THÊM CHO HỆ ĐIỀU KIỆN KÉM ---
+            elif case.get("expect_instability"):
                 x_np = np.linalg.solve(A_np, b_np)
-                assert np.allclose(x_np, x_given, atol=1e-9), \
-                    f"x_np = {np.round(x_np,6)} != x_given = {x_given}"
+                # Bắt buộc nghiệm giải ra (x_np) phải KHÁC XA nghiệm lý thuyết (x_given) do bị nhiễu
+                is_drifted = not np.allclose(x_np, x_given, atol=1e-4)
+                assert is_drifted, "Bất ngờ chưa, nghiệm không bị trôi dạt!"
+                print(f"    => PASSED  (Bị nhiễu số học: x_np = {np.round(x_np, 2)} khác xa x_given, e = {e:.2e})")
+            # -----------------------------------------------
+
+            else:
+                x_np = np.linalg.solve(A_np, b_np)
+                assert np.allclose(x_np, x_given, atol=1e-9), f"x_np = {np.round(x_np,6)} != x_given = {x_given}"
                 print(f"    => PASSED  (x_np ~ x_given [OK], e = {e:.2e})")
 
         except AssertionError as err:
             print(f"    => FAILED: {err}")
-            all_passed = False
+            failed_count += 1
         except np.linalg.LinAlgError as ex:
             print(f"    => FAILED (LinAlgError): {ex}")
-            all_passed = False
+            failed_count += 1
         except Exception as ex:
             print(f"    => FAILED (Loi): {ex}")
-            all_passed = False
+            failed_count += 1
 
-    if not all_passed:
-        raise AssertionError("Co bai test that bai trong verify_solution.")
-
+    if failed_count > 0:
+        raise AssertionError(f"Co {failed_count} bai test that bai trong verify_solution.")
 
 if __name__ == "__main__":
     test_verify_solution()

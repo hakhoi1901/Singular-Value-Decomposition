@@ -1,11 +1,503 @@
 \section{Phần 2: Phân Rã Ma Trận và Trực Quan Hóa với Manim}
-Nội dung chi tiết của phần 2...
 
-\subsection{Cơ sở lý thuyết phương pháp phân rã}
-Mô tả phương pháp (LU, QR, SVD, hoặc Cholesky) mà nhóm đã chọn.
+% ===========================================================
+\subsection{Cơ sở lý thuyết phương pháp phân rã SVD}
 
+\subsubsection{Định nghĩa và Định lý tồn tại}
+Phân rã giá trị suy biến (SVD) là một phương pháp phân tích ma trận tổng quát, cho phép phân rã bất kỳ ma trận thực hoặc phức nào thành tích của ba ma trận đặc biệt. Khác với phân tích trị riêng (Eigendecomposition) chỉ áp dụng cho ma trận vuông, SVD có thể áp dụng cho ma trận $A \in \mathbb{R}^{m \times n}$ với kích thước bất kỳ \cite{strang}.
+
+\textbf{Định lý:} Cho ma trận $A \in \mathbb{R}^{m \times n}$ có hạng $\rank(A) = r$. Luôn tồn tại một phép phân rã có dạng (chứng minh chi tiết được trình bày trong \cite{strang, golub}):
+\begin{equation}
+    A = U \Sigma V^T
+\end{equation}
+Trong đó:
+\begin{itemize}
+    \item $U \in \mathbb{R}^{m \times m}$ là ma trận trực giao ($U^T U = I_m$), các cột của $U$ được gọi là các \textbf{vector suy biến trái} (left singular vectors).
+    \item $V \in \mathbb{R}^{n \times n}$ là ma trận trực giao ($V^T V = I_n$), các cột của $V$ được gọi là các \textbf{vector suy biến phải} (right singular vectors).
+    \item $\Sigma \in \mathbb{R}^{m \times n}$ là ma trận ``đường chéo'' chứa các phần tử không âm $\sigma_1 \geq \sigma_2 \geq \dots \geq \sigma_r > 0$ trên đường chéo chính, các giá trị này được gọi là các \textbf{giá trị suy biến} (singular values).
+\end{itemize}
+
+\subsubsection{Mối liên hệ với Trị riêng và Vector riêng}
+Bản chất của SVD nằm ở việc phân tích hai ma trận đối xứng xác định bán dương liên quan đến $A$ là $A^T A$ và $A A^T$:
+\begin{enumerate}
+    \item \textbf{Tìm $V$:} Các cột của $V$ chính là các vector riêng trực chuẩn của ma trận $A^T A \in \mathbb{R}^{n \times n}$.
+    \item \textbf{Tìm $U$:} Các cột của $U$ chính là các vector riêng trực chuẩn của ma trận $A A^T \in \mathbb{R}^{m \times m}$.
+    \item \textbf{Tìm $\Sigma$:} Các giá trị suy biến $\sigma_i$ là căn bậc hai của các trị riêng dương $\lambda_i$ của ma trận $A^T A$ (hoặc $A A^T$):
+    \begin{equation}
+        \sigma_i = \sqrt{\lambda_i(A^T A)}
+    \end{equation}
+\end{enumerate}
+
+\subsubsection{Ý nghĩa hình học của SVD}
+Về mặt hình học, ma trận $A$ được xem như một phép biến đổi tuyến tính từ không gian $\mathbb{R}^n$ sang $\mathbb{R}^m$. Phép phân rã $A = U \Sigma V^T$ chia biến đổi này thành ba bước độc lập:
+\begin{itemize}
+    \item \textbf{Bước 1 ($V^T$):} Phép quay (hoặc phản chiếu) trong không gian $\mathbb{R}^n$ để đưa hệ tọa độ về các trục chính.
+    \item \textbf{Bước 2 ($\Sigma$):} Phép co giãn (scaling) dọc theo các trục tọa độ mới. Các giá trị suy biến $\sigma_i$ quyết định mức độ kéo giãn.
+    \item \textbf{Bước 3 ($U$):} Phép quay (hoặc phản chiếu) cuối cùng trong không gian $\mathbb{R}^m$.
+\end{itemize}
+
+\subsubsection{Xấp xỉ hạng thấp và Định lý Eckart-Young}
+Một trong những ứng dụng quan trọng nhất của SVD là khả năng xấp xỉ ma trận. Nếu ta chỉ giữ lại $k$ giá trị suy biến lớn nhất ($k < r$) và triệt tiêu các giá trị còn lại về 0, ta thu được ma trận $A_k$:
+\begin{equation}
+    A_k = \sum_{i=1}^{k} \sigma_i u_i v_i^T
+\end{equation}
+Theo định lý Eckart-Young, $A_k$ là ma trận có hạng $k$ gần với ma trận $A$ nhất theo chuẩn Frobenius. Điều này đặt nền móng cho các kỹ thuật nén dữ liệu, giảm nhiễu và nén ảnh bằng cách loại bỏ các thành phần tương ứng với các giá trị suy biến nhỏ (thường đại diện cho nhiễu hoặc thông tin dư thừa).
+
+
+% ===========================================================
+\subsection{Cài đặt thuật toán SVD trong Python}
+
+Phần này trình bày chi tiết cách nhóm hiện thực hàm \texttt{decompose\_svd} trong file \texttt{part2/decomposition.py}, hoàn toàn không sử dụng các hàm phân tích ma trận có sẵn (như \texttt{numpy.linalg.svd}). Toàn bộ thuật toán được xây dựng từ các phép toán đại số tuyến tính cơ bản.
+
+\subsubsection{Tổng quan luồng thuật toán}
+
+Thuật toán phân rã SVD được triển khai theo bốn bước chính, phản ánh trực tiếp lý thuyết đã trình bày:
+
+\begin{enumerate}
+    \item Tính ma trận $A^T A \in \mathbb{R}^{n \times n}$.
+    \item Tìm trị riêng và vector riêng của $A^T A$ bằng \textbf{thuật toán Jacobi}.
+    \item Tính các \textbf{giá trị suy biến} $\sigma_i = \sqrt{\lambda_i}$ và sắp xếp giảm dần.
+    \item Tính các \textbf{vector suy biến trái} $u_i = \frac{1}{\sigma_i} A v_i$ và bổ sung cơ sở trực giao.
+\end{enumerate}
+
+\subsubsection{Module cấu hình toàn cục: \texttt{config.py}}
+
+Trước khi đi vào thuật toán chính, nhóm định nghĩa một module dùng chung để xử lý sai số dấu phẩy động. Việc quản lý sai số là một yêu cầu tất yếu khi làm việc với số thực trên máy tính, do biểu diễn dấu phẩy động có độ chính xác hữu hạn theo chuẩn IEEE~754 \cite{ieee754}:
+
+\begin{itemize}
+    \item \texttt{EPSILON = 1e-12}: Ngưỡng epsilon toàn cục. Mọi số có giá trị tuyệt đối nhỏ hơn ngưỡng này đều được coi là bằng~0.
+    \item \texttt{is\_zero(x)}: Hàm kiểm tra xem một số có xấp xỉ bằng~0 hay không.
+    \item \texttt{zero\_rectify(value)}: Nếu giá trị đủ nhỏ thì trả về 0.0 thay vì giá trị tính toán (tránh các số dư như \texttt{1e-16} làm ``ô nhiễm'' kết quả).
+\end{itemize}
+
+Việc tách riêng các hằng số và hàm xử lý sai số vào \texttt{config.py} giúp đảm bảo tính nhất quán giữa hai module \texttt{decomposition.py} và \texttt{diagonalization.py}.
+
+\begin{lstlisting}[language=Python, caption=Hàm xử lý sai số]
+EPSILON = 1e-12
+
+def is_zero(x: float) -> bool:
+    return abs(x) <= EPSILON
+
+def zero_rectify(value: float) -> float:
+    if is_zero(value):
+        return 0.0
+    return value
+\end{lstlisting}
+
+\subsubsection{Các hàm tiện ích nội bộ (private)}
+
+Toàn bộ thuật toán SVD được xây dựng trên một tập hàm tiện ích riêng (tiền tố \texttt{\_}), không phụ thuộc vào thư viện ngoài:
+
+\paragraph{Kiểm tra và chuẩn hóa đầu vào}
+
+Hàm \texttt{\_validate\_matrix(A)} kiểm tra ba điều kiện: ma trận không rỗng, mỗi dòng có ít nhất một cột, và mọi dòng có cùng số cột. Nếu vi phạm, hàm phát sinh \texttt{ValueError} với thông báo rõ ràng. Kiểm tra đầu vào sớm giúp tránh lỗi \textit{index out of range} khó truy vết xuất hiện ở sâu bên trong thuật toán.
+
+\paragraph{Các phép toán ma trận cơ bản}
+
+\begin{itemize}
+    \item \texttt{\_identity(n)}: Sinh ma trận đơn vị $I_n$ dưới dạng list 2 chiều.
+    \item \texttt{\_transpose(A)}: Chuyển vị ma trận bằng \texttt{zip(*A)}.
+    \item \texttt{\_dot(u, v)}: Tích vô hướng hai vector, dùng \texttt{sum} + \texttt{zip}.
+    \item \texttt{\_norm(v)}: Chuẩn Euclidean $\|v\|_2 = \sqrt{\sum v_i^2}$. Hàm dùng \texttt{max(0.0, ...)} để đề phòng kết quả âm rất nhỏ do sai số số học trước khi lấy căn.
+    \item \texttt{\_matmul(A, B)}: Nhân ma trận $C = AB$ theo thuật toán $O(mnp)$. Có tối ưu nhỏ: bỏ qua vòng lặp trong nếu $a_{ik} \approx 0$ (kiểm tra bằng \texttt{is\_zero}).
+    \item \texttt{\_matvec(A, v)}: Tích ma trận--vector $Av$, trả về danh sách 1 chiều.
+\end{itemize}
+
+\paragraph{Trực giao hóa Gram-Schmidt}
+
+\texttt{\_orthogonalize(v, basis)}: Chiếu vector $v$ ra khỏi tất cả các vector trong \texttt{basis} (đã chuẩn hóa). Đây là bước trực giao hóa Gram-Schmidt cổ điển:
+\begin{equation}
+    w = v - \sum_{b \in \text{basis}} \langle v, b \rangle \cdot b
+\end{equation}
+Mỗi lần trừ xong một thành phần, kết quả được làm sạch qua \texttt{zero\_rectify} nhằm triệt tiêu các dư số dấu phẩy động.
+
+\texttt{\_find\_new\_unit\_vector(basis, dim)}: Khi cần bổ sung thêm vector vào cơ sở trực giao (ví dụ: ma trận suy biến thiếu vector suy biến), hàm lần lượt thử các vector chỉ (standard basis vectors) $e_1, e_2, \ldots, e_n$. Mỗi ứng viên được trực giao hóa với \texttt{basis} rồi chuẩn hóa. Nếu toàn bộ thử thất bại (hiếm gặp), hàm thử vector $(1, 2, 3, \ldots)$ làm phương án dự phòng.
+
+\begin{lstlisting}[language=Python, caption=Hàm trực giao hóa Gram-Schmidt]
+import numpy as np
+
+def _orthogonalize(v: list[float], basis: list[list[float]]) -> list[float]:
+    w = list(v)
+    for b in basis:
+        coeff = _dot(w, b)
+        w = [w[i] - coeff * b[i] for i in range(len(w))]
+    return _rectify_vector(w)
+
+def _find_new_unit_vector(basis: list[list[float]], dim: int) -> list[float]:
+    for i in range(dim):
+        candidate = [0.0] * dim
+        candidate[i] = 1.0
+        w = _orthogonalize(candidate, basis)
+        nw = _norm(w)
+        if nw > 1e-10:
+            return [x / nw for x in w]
+
+    candidate = [float(i + 1) for i in range(dim)]
+    w = _orthogonalize(candidate, basis)
+    nw = _norm(w)
+    return [x / nw for x in w]
+\end{lstlisting}
+
+\paragraph{Làm sạch kết quả}
+
+\begin{itemize}
+    \item \texttt{\_rectify\_matrix(M)}: Áp dụng \texttt{zero\_rectify} lên từng phần tử của ma trận, đặt về đúng \texttt{0.0} nếu nhỏ hơn \texttt{EPSILON}.
+    \item \texttt{\_rectify\_vector(v)}: Tương tự nhưng cho vector 1 chiều.
+\end{itemize}
+
+Bước làm sạch này được thực hiện sau mỗi giai đoạn tính toán lớn để đảm bảo kết quả cuối cùng ``sạch'' theo nghĩa số học (ví dụ: không xuất hiện \texttt{-2.77e-16} thay vì \texttt{0.0}).
+
+\subsubsection{Thuật toán Jacobi tìm trị riêng: \texttt{\_jacobi\_eigen\_symmetric}}
+
+Đây là hàm cốt lõi của toàn bộ module. Thuật toán Jacobi tìm toàn bộ trị riêng và vector riêng của ma trận \textbf{đối xứng thực} $S = A^T A$ mà không dùng bất kỳ thư viện đại số tuyến tính nào. Phương pháp tính toán giá trị suy biến thông qua trị riêng của $A^T A$ được tham khảo từ \cite{golub, trefethen}.
+
+\paragraph{Nguyên lý}
+
+Thuật toán Jacobi lặp lại việc áp dụng các phép quay Givens để triệt tiêu dần các phần tử ngoài đường chéo, đưa ma trận về dạng đường chéo. Mỗi vòng lặp:
+\begin{enumerate}
+    \item Tìm phần tử ngoài đường chéo có giá trị tuyệt đối lớn nhất, tức là tại vị trí $(p, q)$ với $p \neq q$: $|D[p][q]| = \max_{i < j} |D[i][j]|$.
+    \item Nếu giá trị đó nhỏ hơn \texttt{EPSILON} thì dừng (đã hội tụ).
+    \item Tính góc quay $\theta$ của phép quay Givens trong mặt phẳng $(p, q)$ thông qua:
+    \begin{equation}
+        \tau = \frac{D[q][q] - D[p][p]}{2 \cdot D[p][q]}, \quad
+        t = \frac{\text{sign}(\tau)}{|\tau| + \sqrt{1 + \tau^2}}, \quad
+        c = \frac{1}{\sqrt{1 + t^2}}, \quad s = t \cdot c
+    \end{equation}
+    \item Cập nhật ma trận $D \leftarrow J^T D J$ (với $J$ là ma trận quay Givens).
+    \item Tích lũy ma trận vector riêng $V \leftarrow V \cdot J$.
+\end{enumerate}
+
+Số vòng lặp tối đa được đặt là $\max(30,\; 20n^2)$ để đảm bảo hội tụ ngay cả với ma trận lớn.
+
+\paragraph{Sắp xếp và trực giao hóa lại kết quả}
+
+Sau khi thuật toán Jacobi hội tụ, trị riêng được sắp xếp giảm dần. Một bước \textbf{trực giao hóa lại} Gram-Schmidt được áp dụng lên các cột của ma trận $V$. Bước này cần thiết vì:
+\begin{itemize}
+    \item Sai số tích lũy qua nhiều vòng lặp có thể làm các cột của $V$ không hoàn toàn trực giao nữa.
+    \item Khi có trị riêng lặp nhau, các vector riêng trong cùng không gian riêng cần được trực giao hóa tường minh.
+\end{itemize}
+
+\begin{lstlisting}[language=Python, caption=Hàm xây dựng ma trận vector riêng]
+def _build_eigenvectors_matrix(A: list[list[float]]) -> list[list[float]]:
+    n = len(A)
+    eigenvalues = _qr_eigen_diagonal(A)
+    eigenvectors: list[list[float]] = []
+
+    for lam in eigenvalues:
+        B = [row[:] for row in A]
+        for i in range(n):
+            B[i][i] -= lam
+
+        basis = _null_space_basis(B)
+        if not basis:
+            ortho_vec = [0.0] * n
+            ortho_vec[len(eigenvectors)] = 1.0
+            eigenvectors.append(ortho_vec)
+        else:
+            for vec in basis:
+                w = vec
+                for ev in eigenvectors:
+                    coeff = _dot(w, ev)
+                    w = [w[i] - coeff * ev[i] for i in range(n)]
+                w = _normalize(w)
+                eigenvectors.append(w)
+
+    V = [[eigenvectors[col][row] for col in range(n)] for row in range(n)]
+    return _rectify_matrix(V)
+\end{lstlisting}
+
+\subsubsection{Hàm chính: \texttt{decompose\_svd(A)}}
+
+Hàm này nhận ma trận $A \in \mathbb{R}^{m \times n}$ và trả về bộ ba $(U, \Sigma, V^T)$.
+
+\paragraph{Bước 1 -- Tính $A^T A$ và phân tích trị riêng}
+
+Ma trận $A^T A$ được tính bằng cách kết hợp \texttt{\_transpose} và \texttt{\_matmul}. Sau đó hàm \texttt{\_jacobi\_eigen\_symmetric} trả về danh sách trị riêng (đã sắp xếp giảm dần) và ma trận $V$ (mỗi cột là một vector riêng tương ứng).
+
+\paragraph{Bước 2 -- Tính các giá trị suy biến $\Sigma$}
+
+Mỗi trị riêng $\lambda_i$ được chuyển thành giá trị suy biến $\sigma_i = \sqrt{\lambda_i}$. Do sai số số học, một số $\lambda_i$ có thể âm rất nhỏ; chúng được ép về $0$ trước khi lấy căn. Chỉ lấy $r = \min(m, n)$ giá trị suy biến đầu tiên.
+
+\paragraph{Bước 3 -- Tính các vector suy biến trái $U$}
+
+Với mỗi $\sigma_i > 0$, vector suy biến trái được tính theo công thức:
+\begin{equation}
+    u_i = \frac{A v_i}{\sigma_i}
+\end{equation}
+Trong đó $v_i$ là cột thứ $i$ của ma trận $V$. Sau khi tính xong, $u_i$ được trực giao hóa với tất cả các $u_j$ ($j < i$) đã tính trước (để giảm thiểu sai số tích lũy), rồi chuẩn hóa.
+
+Với các chỉ số $i$ tương ứng $\sigma_i = 0$ (không gian null), không thể dùng công thức trên. Khi đó hàm \texttt{\_find\_new\_unit\_vector} được gọi để bổ sung vector trực giao tùy ý vào cơ sở của $U$, đảm bảo $U$ là ma trận trực giao $m \times m$ đầy đủ.
+
+\paragraph{Bước 4 -- Lắp ráp kết quả}
+
+\begin{itemize}
+    \item Ma trận $U$: Lắp các cột $u_0, u_1, \ldots$ thành ma trận $m \times m$.
+    \item $\Sigma$: Danh sách $r$ giá trị suy biến (không xây dựng ma trận đầy đủ để tiết kiệm bộ nhớ).
+    \item $V^T$: Chuyển vị của ma trận $V$ vừa có được từ bước Jacobi.
+\end{itemize}
+
+Cả $U$ và $V^T$ đều được làm sạch bằng \texttt{\_rectify\_matrix} trước khi trả về.
+
+\begin{lstlisting}[language=Python, caption=Hàm phân rã SVD]
+def decompose_svd(A: list[list[float]]) -> tuple[list[list[float]], list[float], list[list[float]]]:
+    _validate_square_matrix(A)
+    m = len(A)
+    n = len(A[0])
+
+    ATA = _matmul(_transpose(A), A)
+    eigenvalues = _qr_eigen_diagonal(ATA)
+    eigenvalues = [max(0.0, val) for val in eigenvalues]
+    eigenvalues.sort(reverse=True)
+
+    r = min(m, n)
+    sigma = eigenvalues[:r]
+
+    V = _build_eigenvectors_matrix(ATA)
+
+    U = []
+    for i in range(r):
+        if sigma[i] > 1e-10:
+            col_v = [V[j][i] for j in range(n)]
+            Av = _matmul(A, col_v)
+            u_i = [Av[j] / sigma[i] for j in range(m)]
+            U.append(u_i)
+        else:
+            u_i = _find_new_unit_vector(U, m)
+            U.append(u_i)
+
+    while len(U) < m:
+        u_i = _find_new_unit_vector(U, m)
+        U.append(u_i)
+
+    U = _rectify_matrix(U)
+    V = _rectify_matrix(V)
+    sigma = _rectify_vector(sigma)
+
+    return U, sigma, _transpose(V)
+\end{lstlisting}
+
+\subsubsection{Kiểm thử hàm \texttt{decompose\_svd}}
+
+Hàm \texttt{test\_decompose\_svd()} bao gồm 15 ca kiểm thử bao phủ các trường hợp đặc biệt quan trọng. Với mỗi ca kiểm thử hợp lệ, ba tính chất sau được xác minh:
+
+\begin{enumerate}
+    \item \textbf{Kích thước đúng:} $U$ là $m \times m$, $\Sigma$ có độ dài $r = \min(m,n)$, $V^T$ là $n \times n$.
+    \item \textbf{Tính trực giao:} $U^T U = I_m$ và $V^T V = I_n$ (kiểm tra bằng \texttt{\_is\_orthogonal}).
+    \item \textbf{Tái tạo ma trận:} Sai số $\|U \Sigma V^T - A\|_\infty \leq \texttt{tol}$ (kiểm tra bằng \texttt{\_max\_abs\_diff}).
+\end{enumerate}
+
+Các ca kiểm thử lỗi (ma trận rỗng, số cột không đều, ma trận 0 cột) xác nhận rằng \texttt{ValueError} được ném ra đúng nơi, đúng lúc.
+
+Ví dụ kết quả kiểm thử (trích):
+\begin{itemize}
+    \item Ma trận vuông full-rank $3 \times 3$: \texttt{PASSED (sai số lớn nhất = 5.551e-16)}
+    \item Ma trận suy biến (hai dòng phụ thuộc): \texttt{PASSED (sai số lớn nhất = 2.220e-16)}
+    \item Ma trận toàn 0 kích thước $3 \times 4$: \texttt{PASSED (sai số lớn nhất = 0.000e+00)}
+    \item Dữ liệu rỗng: \texttt{PASSED (Bắt đúng lỗi mong đợi: Ma trận A không được rỗng)}
+\end{itemize}
+
+
+% ===========================================================
 \subsection{Chéo hóa ma trận}
-Trình bày việc cài đặt tìm giá trị riêng, vector riêng...
 
+\subsubsection{Tổng quan}
+
+File \texttt{part2/diagonalization.py} hiện thực bài toán chéo hóa ma trận vuông $A \in \mathbb{R}^{n \times n}$: tìm ma trận $P$ và mảng $D$ sao cho $A = P \cdot \text{diag}(D) \cdot P^{-1}$, hay tương đương $AP = P \cdot \text{diag}(D)$.
+
+Khác với SVD dành cho ma trận bất kỳ, chéo hóa chỉ áp dụng được khi ma trận có đủ $n$ vector riêng độc lập tuyến tính. Nếu ma trận không chéo hóa được (thiếu vector riêng, trị riêng phức,...), hàm phát sinh \texttt{ValueError}.
+
+\subsubsection{Hàm phân rã QR: \texttt{\_qr\_decomposition}}
+
+Để tìm trị riêng của ma trận vuông tổng quát, nhóm sử dụng \textbf{thuật toán lặp QR}. Nền tảng là phân rã $A = QR$ bằng \textbf{Gram-Schmidt trực giao hóa}:
+
+\begin{enumerate}
+    \item Duyệt lần lượt qua $n$ cột của $A$.
+    \item Với cột thứ $j$: trực giao hóa nó với tất cả $q_0, q_1, \ldots, q_{j-1}$ đã xây dựng và lưu hệ số chiếu vào $R[i][j]$.
+    \item Chuẩn hóa để thu được $q_j$, lưu chuẩn vào $R[j][j]$.
+    \item Nếu cột bị suy biến ($\|v_j\| \approx 0$), bổ sung vector trực giao ngẫu nhiên thay thế.
+\end{enumerate}
+
+Ma trận $Q$ là trực giao và $R$ là tam giác trên. Kết quả cuối được làm sạch bằng \texttt{\_rectify\_matrix}.
+
+\begin{lstlisting}[language=Python, caption=Hàm phân rã QR]
+def _qr_decomposition(A: list[list[float]]) -> tuple[list[list[float]], list[list[float]]]:
+    m = len(A)
+    n = len(A[0])
+    Q = [[0.0] * m for _ in range(n)]
+    R = [[0.0] * n for _ in range(n)]
+
+    for j in range(n):
+        v = [A[i][j] for i in range(m)]
+        for i in range(j):
+            R[i][j] = sum(v[k] * Q[i][k] for k in range(m))
+            v = [v[k] - R[i][j] * Q[i][k] for k in range(m)]
+
+        norm_v = math.sqrt(sum(x * x for x in v))
+        if norm_v < 1e-10:
+            ortho_vec = [0.0] * m
+            ortho_vec[j] = 1.0
+            Q[j] = ortho_vec
+            R[j][j] = 0.0
+        else:
+            R[j][j] = norm_v
+            Q[j] = [x / norm_v for x in v]
+
+    Q = _rectify_matrix(Q)
+    R = _rectify_matrix(R)
+    return Q, R
+\end{lstlisting}
+
+\subsubsection{Thuật toán lặp QR tìm trị riêng: \texttt{\_qr\_eigen\_diagonal}}
+
+Ý tưởng: lặp phép biến đổi đồng dạng $A_{k+1} = R_k Q_k$ (với $A_k = Q_k R_k$). Khi hội tụ, đường chéo của $A_k$ xấp xỉ các trị riêng thực của $A$.
+
+\begin{equation}
+    A_0 = A, \quad A_{k+1} = R_k Q_k \quad \text{(với } A_k = Q_k R_k\text{)}
+\end{equation}
+
+Điều kiện dừng: tổng các phần tử dưới đường chéo (subdiagonal) của $A_k$ nhỏ hơn ngưỡng $\varepsilon = 10^{-10}$. Số vòng lặp tối đa là 4000 để bảo đảm luôn dừng. Nếu không hội tụ, hàm ném \texttt{ValueError} báo ma trận có trị riêng phức hoặc không chéo hóa được trên $\mathbb{R}$.
+
+\begin{lstlisting}[language=Python, caption=Hàm lặp QR tìm trị riêng]
+def _qr_eigen_diagonal(A: list[list[float]], max_iter: int = 4000, tol: float = 1e-10) -> list[float]:
+    n = len(A)
+    Ak = [row[:] for row in A]
+
+    for _ in range(max_iter):
+        Q, R = _qr_decomposition(Ak)
+        Ak = _matmul(R, Q)
+
+        subdiag_sum = sum(abs(Ak[i][j]) for i in range(n) for j in range(i))
+        if subdiag_sum < tol:
+            break
+
+    eigenvalues = [Ak[i][i] for i in range(n)]
+    return _rectify_vector(eigenvalues)
+
+\end{lstlisting}
+
+\subsubsection{Nhóm trị riêng: \texttt{\_group\_eigenvalues}}
+
+Sau khi có danh sách $n$ trị riêng (có thể có lặp với sai số nhỏ), hàm này gộp các giá trị cách nhau dưới $10^{-7}$ vào cùng một nhóm, lấy trung bình làm đại diện và đếm bội số (algebraic multiplicity). Việc nhóm này cần thiết để xử lý đúng các trường hợp trị riêng lặp.
+
+\subsubsection{Không gian null và vector riêng: \texttt{\_rref} và \texttt{\_null\_space\_basis}}
+
+Với mỗi trị riêng $\lambda$, các vector riêng tương ứng là cơ sở của $\ker(A - \lambda I)$, tức là không gian null của ma trận $B = A - \lambda I$.
+
+\begin{itemize}
+    \item \texttt{\_rref(A, tol)}: Đưa ma trận về dạng bậc thang rút gọn (RREF) bằng khử Gauss--Jordan với chọn pivot theo cột (partial pivoting). Hàm trả về ma trận RREF và danh sách chỉ số các cột pivot.
+    \item \texttt{\_null\_space\_basis(A, tol)}: Từ RREF, xác định các \textit{cột tự do} (free columns), sau đó xây dựng vector cơ sở cho mỗi cột tự do: đặt thành phần tự do bằng 1, các thành phần pivot được điền từ hàng RREF tương ứng rồi chuẩn hóa.
+\end{itemize}
+
+\subsubsection{Hàm chính: \texttt{diagonalize(A)}}
+
+Luồng thực thi của \texttt{diagonalize}:
+
+\begin{enumerate}
+    \item \textbf{Kiểm tra đầu vào:} \texttt{\_validate\_square\_matrix} đảm bảo $A$ là ma trận vuông hợp lệ.
+    \item \textbf{Tìm trị riêng:} \texttt{\_qr\_eigen\_diagonal} cho ước lượng các trị riêng. \texttt{\_group\_eigenvalues} gộp các trị riêng gần nhau.
+    \item \textbf{Tìm vector riêng:} Với mỗi nhóm $(\lambda, \text{mult})$, xây dựng $B = A - \lambda I$ rồi dùng \texttt{\_null\_space\_basis} tìm cơ sở kernel. Nếu số vector riêng tìm được ít hơn bội số, ném \texttt{ValueError} (ma trận không chéo hóa được).
+    \item \textbf{Chọn vector độc lập:} Sau khi có ứng viên vector riêng, kiểm tra hạng của ma trận $P$ tích lũy. Chỉ thêm vector nào thực sự tăng hạng, đảm bảo $P$ khả nghịch.
+    \item \textbf{Kiểm tra sai số:} Tính $\|AP - P \cdot \text{diag}(D)\|_\infty$. Nếu sai số vượt $10^{-6}$, ném \texttt{ValueError}.
+    \item \textbf{Làm sạch và trả về:} $P$ và $D$ được làm sạch bằng \texttt{\_rectify\_matrix} / \texttt{\_rectify\_vector}.
+\end{enumerate}
+
+\begin{lstlisting}[language=Python, caption=Hàm chéo hóa ma trận]
+def diagonalize(A: list[list[float]]) -> tuple[list[list[float]], list[float]]:
+    _validate_square_matrix(A)
+
+    A_num = [[float(value) for value in row] for row in A]
+    n = len(A_num)
+
+    diag_estimates = _qr_eigen_diagonal(A_num)
+    eig_groups = _group_eigenvalues(diag_estimates)
+
+    eigenvectors: list[list[float]] = []
+    eigenvalues: list[float] = []
+
+    for lam, multiplicity in eig_groups:
+        B = [row[:] for row in A_num]
+        for i in range(n):
+            B[i][i] = B[i][i] - lam
+
+        basis = _null_space_basis(B)
+        if len(basis) < multiplicity:
+            raise ValueError("Ma tran khong cheo hoa duoc (Thieu cac vector doc lap)")
+
+        added = 0
+        for vec in basis:
+            candidate_cols = eigenvectors + [vec]
+            P_candidate = [[candidate_cols[col][row] for col in range(len(candidate_cols))] for row in range(n)]
+            if _rank(P_candidate) > len(eigenvectors):
+                eigenvectors.append(vec)
+                eigenvalues.append(lam)
+                added += 1
+                if added == multiplicity:
+                    break
+
+        if added < multiplicity:
+            raise ValueError("Ma tran khong cheo hoa duoc (Khong chon du cac vector rieng)")
+
+    if len(eigenvectors) != n:
+        raise ValueError("Ma tran khong cheo hoa duoc (Thieu co so vector rieng)")
+
+    P = _build_p_from_columns(eigenvectors)
+    if _rank(P) != n:
+        raise ValueError("Ma tran khong cheo hoa duoc (P khong kha nghich)")
+
+    AP = _matmul(A_num, P)
+    PD = [[P[i][j] * eigenvalues[j] for j in range(n)] for i in range(n)]
+    residual = _max_abs_diff(AP, PD)
+    if residual > 1e-6:
+        raise ValueError("Ma tran khong cheo hoa duoc tren R hoac sai so so hoc qua lon")
+
+    P = _rectify_matrix(P)
+    D = _rectify_vector(eigenvalues)
+    return P, D
+\end{lstlisting}
+
+\subsubsection{Kiểm thử hàm \texttt{diagonalize}}
+
+Hàm \texttt{test\_diagonalize()} gồm 11 ca kiểm thử. Với mỗi ca hợp lệ, ba tính chất được xác minh:
+
+\begin{enumerate}
+    \item \textbf{Kích thước đúng:} $P$ là $n \times n$, $D$ có đúng $n$ phần tử.
+    \item \textbf{$P$ khả nghịch:} $\rank(P) = n$ (kiểm tra bằng \texttt{\_rank}).
+    \item \textbf{Quan hệ chéo hóa đúng:} $\|AP - P \cdot \text{diag}(D)\|_\infty \leq \texttt{tol}$.
+\end{enumerate}
+
+Các ca kiểm thử lỗi (khối Jordan bậc 2, ma trận quay có trị riêng phức, ma trận không vuông) xác nhận \texttt{ValueError} được ném ra đúng. Ví dụ kết quả:
+
+\begin{itemize}
+    \item Ma trận chéo $3 \times 3$, trị riêng phân biệt: \texttt{PASSED (sai số = 0.000e+00)}
+    \item Ma trận tam giác trên: \texttt{PASSED (sai số $\leq$ 1e{-6})}
+    \item Khối Jordan bậc 2: \texttt{PASSED (Bắt đúng lỗi mong đợi)}
+    \item Ma trận quay (trị riêng phức): \texttt{PASSED (Bắt đúng lỗi mong đợi)}
+\end{itemize}
+
+
+% ===========================================================
 \subsection{Kịch bản trực quan hóa Manim}
-Trình bày cách dựng video, các cảnh (scenes) hiển thị trong video...
+
+\subsubsection{Tổng quan video}
+
+File \texttt{part2/manim\_scene.py} xây dựng một chuỗi 5 cảnh (scenes) liên tiếp bằng thư viện Manim Community \cite{manim_docs}, trực quan hóa ý nghĩa hình học của phép phân rã $A = U\Sigma V^T$ theo mô hình ``Quay -- Co giãn -- Quay'' (Rotate -- Scale -- Rotate). Mỗi cảnh ứng với một bước biến đổi trong chuỗi $\mathbb{R}^n \xrightarrow{V^T} \xrightarrow{\Sigma} \xrightarrow{U} \mathbb{R}^m$. Các đối tượng hình học (hình tròn, elipse, vector mũi tên) được dựng và hoạt hóa bằng các API hình học của thư viện Manim \cite{manim_docs}.
+
+\subsubsection{Cảnh 1: Giới thiệu bài toán}
+
+Cảnh đầu tiên hiển thị ma trận $A$ và công thức phân rã $A = U\Sigma V^T$ dưới dạng text và phương trình toán học. Đây là cảnh dẫn dắt, giúp người xem hiểu bố cục tổng thể của video trước khi đi vào từng bước biến đổi.
+
+\subsubsection{Cảnh 2: Biến đổi $V^T$ (Quay lần 1)}
+
+Cảnh này vẽ hình tròn đơn vị trong không gian $\mathbb{R}^2$ cùng với hai vector cơ sở $e_1, e_2$. Khi áp dụng phép biến đổi $V^T$, hình tròn và các vector được hoạt hóa quay sang hướng mới. Vì $V^T$ là ma trận trực giao ($\det(V^T) = \pm 1$), hình tròn giữ nguyên hình dạng (không bị méo), chỉ thay đổi hướng -- minh họa trực quan tính chất bảo toàn chuẩn của phép quay trực giao.
+
+\subsubsection{Cảnh 3: Biến đổi $\Sigma$ (Co giãn)}
+
+Áp dụng tiếp ma trận đường chéo $\Sigma$ lên kết quả từ Cảnh~2. Hình tròn đơn vị được kéo thành \textbf{hình elipse}, với nửa trục lớn bằng $\sigma_1$ (giá trị suy biến thứ nhất) và nửa trục nhỏ bằng $\sigma_2$. Cảnh này minh họa rõ ràng vai trò của các giá trị suy biến: chúng xác định mức độ ``co giãn'' của không gian theo từng hướng chính.
+
+\subsubsection{Cảnh 4: Biến đổi $U$ (Quay lần 2)}
+
+Áp dụng phép quay $U$ lên hình elipse từ Cảnh~3. Tương tự Cảnh~2, $U$ là ma trận trực giao nên hình elipse chỉ quay mà không thay đổi hình dạng hay kích thước. Kết quả cuối cùng là ảnh của hình tròn đơn vị qua phép biến đổi toàn bộ $A = U\Sigma V^T$.
+
+\subsubsection{Cảnh 5: Tổng kết và kết luận}
+
+Cảnh cuối hiển thị đồng thời hình tròn ban đầu và hình elipse kết quả, cùng với chú thích về ý nghĩa của từng thành phần. Ngoài ra, cảnh này có thể trình bày ứng dụng xấp xỉ hạng thấp: khi giữ lại chỉ $k < r$ giá trị suy biến, ta thu được hình elipse ``dẹt'' hơn, trực quan hóa sự mất thông tin theo từng chiều.
