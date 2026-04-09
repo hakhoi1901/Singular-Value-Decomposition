@@ -12,3 +12,11 @@ env/
 
 test_output.txt
 texput.log
+
+*.aux
+*.lof
+*.log
+*.lol
+*.out
+*.toc
+*.lot
