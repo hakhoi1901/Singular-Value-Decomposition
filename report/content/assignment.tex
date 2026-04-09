@@ -1,0 +1,85 @@
+% ==========================================
+% BẢNG PHÂN CÔNG CÔNG VIỆC
+% ==========================================
+\section*{BẢNG PHÂN CÔNG CÔNG VIỆC VÀ MỨC ĐỘ ĐÓNG GÓP}
+\addcontentsline{toc}{section}{Bảng phân công công việc}
+
+\renewcommand{\arraystretch}{1.5}
+% Thay tabular bằng longtable
+\begin{longtable}{|p{0.05\textwidth}|p{0.18\textwidth}|>{\linespread{1.3}\selectfont\arraybackslash}p{0.6\textwidth}|p{0.08\textwidth}|}
+    
+    % --- 1. TIÊU ĐỀ Ở TRANG ĐẦU TIÊN ---
+    \hline
+    \centering \textbf{STT} & \textbf{Họ tên / MSSV} & \textbf{Nhiệm vụ đảm nhiệm chi tiết} & \textbf{Đóng góp} \\ \hline
+    \endfirsthead
+    
+    % --- 2. TIÊU ĐỀ LẶP LẠI Ở CÁC TRANG SAU ---
+    \hline
+    \centering \textbf{STT} & \textbf{Họ tên / MSSV} & \textbf{Nhiệm vụ đảm nhiệm chi tiết} & \textbf{Đóng góp} \\ \hline
+    \endhead
+    
+    % --- 3. CHÂN BẢNG Ở CÁC TRANG BỊ NGẮT ---
+    \hline
+    \endfoot
+    
+    % --- 4. CHÂN BẢNG Ở TRANG CUỐI CÙNG ---
+    \hline
+    \endlastfoot
+
+    % ================= NỘI DUNG BẢNG =================
+    
+    % Thành viên 1
+    \centering 1 & 
+    24120018 \newline \textbf{Đào Thị Quỳnh Anh} & 
+    \vspace{-0.4cm}
+    \begin{itemize}[itemsep=0.15cm, topsep=0cm, partopsep=0cm]
+        \item Biên soạn \texttt{part1\_demo.ipynb} minh họa trực quan kết quả Phần 1.
+        \item Xây dựng \texttt{data\_gen.py}: Viết script sinh ma trận ngẫu nhiên SPD (well-conditioned) và ma trận Hilbert $H_n$ (ill-conditioned).
+        \item Phân tích tính ổn định: Tính số điều kiện $\kappa_2(A)$, thu thập sai số tương đối và lý luận giải thích hiện tượng theo Định lý 3.1.
+    \end{itemize} \vspace{-0.2cm} & 
+    \centering 100\% \tabularnewline \hline
+    
+    % Thành viên 2
+    \centering 2 & 
+    24120347 \newline \textbf{Phan Lê Đăng Khoa} & 
+    \vspace{-0.4cm}
+    \begin{itemize}[itemsep=0.15cm, topsep=0cm, partopsep=0cm]
+        \item Cài đặt thuật toán phân rã SVD (Phần 2).
+        \item Xây dựng \texttt{solvers.py}: Tích hợp phương pháp Gauss, SVD và cài đặt thuật toán lặp Gauss-Seidel (kèm hàm kiểm tra ma trận chéo trội).
+        \item Xây dựng \texttt{benchmark.py}: Lên kịch bản đo thời gian thực thi (trung bình 5 vòng lặp), tính sai số tương đối và xuất dữ liệu ra định dạng JSON chuẩn.
+    \end{itemize} \vspace{-0.2cm} & 
+    \centering 100\% \tabularnewline \hline
+    
+    % Thành viên 3
+    \centering 3 & 
+    24120348 \newline \textbf{Hà Đăng Khôi} & 
+    \vspace{-0.4cm}
+    \begin{itemize}[itemsep=0.15cm, topsep=0cm, partopsep=0cm]
+        \item Trực quan hóa Toán học (Phần 2): Viết kịch bản và lập trình tạo Video demo hoạt ảnh quá trình phân rã ma trận bằng thư viện Manim.
+        \item Phối hợp viết báo cáo tổng kết, biên tập tài liệu và quay dựng thành phẩm nộp bài cuối cùng.
+    \end{itemize} \vspace{-0.2cm} & 
+    \centering 100\% \tabularnewline \hline
+
+    % Thành viên 4
+    \centering 4 & 
+    24120352 \newline \textbf{Lương Trung Kiên} & 
+    \vspace{-0.4cm}
+    \begin{itemize}[itemsep=0.15cm, topsep=0cm, partopsep=0cm]
+        \item Phối hợp cài đặt thuật toán Phép khử Gauss và ứng dụng (Phần 1).
+        \item Xây dựng \texttt{analysis.ipynb} (Phần 3): Đọc file dữ liệu JSON, vẽ đồ thị log-log so sánh thời gian thực tế với đường lý thuyết $O(n^3)$.
+        \item Trình bày Markdown lý thuyết Toán học (số điều kiện, Gauss-Seidel) và viết kết luận đánh giá tương quan giữa tính ổn định và chi phí tính toán.
+    \end{itemize} \vspace{-0.2cm} & 
+    \centering 100\% \tabularnewline \hline
+    
+    % Thành viên 5
+    \centering 5 & 
+    24120418 \newline \textbf{Nguyễn Minh Quân} & 
+    \vspace{-0.4cm}
+    \begin{itemize}[itemsep=0.15cm, topsep=0cm, partopsep=0cm]
+        \item Phối hợp cài đặt thuật toán Phép khử Gauss và ứng dụng (Phần 1).
+        \item Biên soạn Báo cáo bằng \LaTeX (\texttt{report.tex}): Dựng khung tài liệu, xử lý các môi trường công thức Toán học phức tạp cho Phần 1 và Phần 2.
+        \item Trích xuất dữ liệu, chèn biểu đồ từ Notebook vào báo cáo, viết phần Mở đầu, Kết luận và rà soát toàn bộ source code trước khi nộp.
+    \end{itemize} \vspace{-0.2cm} & 
+    \centering 100\% \tabularnewline \hline
+    
+\end{longtable}

@@ -9,3 +9,6 @@ __pycache__/
 venv/
 env/
 .gitignore
+
+test_output.txt
+texput.log
