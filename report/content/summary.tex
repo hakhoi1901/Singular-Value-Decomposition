@@ -1,0 +1,46 @@
+\section{Kết luận}
+
+\subsection{Tóm tắt kết quả đạt được}
+Kết thúc quá trình thực hiện đồ án, nhóm đã hoàn thành toàn diện 100\% các mục tiêu đề ra ban đầu, bao gồm cả yêu cầu cốt lõi lẫn các phần mở rộng (điểm cộng). Các kết quả chính yếu bao gồm:
+
+\begin{itemize}[itemsep=0.15cm, topsep=0.1cm]
+    \item \textbf{Cài đặt thành công Phép khử Gauss với độ ổn định cao:} Xây dựng thuật toán từ đầu (from scratch) bằng Python, áp dụng triệt để kỹ thuật Partial Pivoting. Thuật toán xử lý thành công mọi dạng ma trận (vuông, chữ nhật, suy biến) và đã được kiểm chứng tính ổn định số học tương đương với thư viện \texttt{numpy.linalg} thông qua việc triệt tiêu hiện tượng Swamping.
+    
+    \item \textbf{Phát triển hệ thống phân rã và chéo hóa ma trận (SVD):} Hoàn thiện thuật toán phân rã giá trị suy biến (Singular Value Decomposition) dựa trên nền tảng toán học của trị riêng và vector riêng. Thuật toán có khả năng phân rã và trích xuất đúng các ma trận $U, \Sigma, V^T$.
+    
+    \item \textbf{Xây dựng bộ công cụ phân tích hiệu năng (Benchmarking Suite):} Thiết lập thành công kịch bản đo lường tự động (\texttt{benchmark.py}) và hệ thống sinh dữ liệu (\texttt{data\_gen.py}) để thu thập hàng ngàn điểm dữ liệu về thời gian thực thi và sai số tương đối (Residual Norm) trên đa dạng kích thước ma trận ($n \in \{50, 100, 200, 500, 1000\}$).
+    
+    \item \textbf{Phân tích sâu sắc tính bất ổn định số học:} Sử dụng thành công ma trận Hilbert $H_n$ (hệ điều kiện kém) và ma trận SPD để bộc lộ hiện tượng khuếch đại sai số ở chuẩn dấu phẩy động IEEE 754. Qua đó, minh chứng rõ ràng mối liên hệ giữa Số điều kiện $\kappa_2(A)$ và mức độ "trôi dạt" của vector nghiệm.
+    
+    \item \textbf{Trực quan hóa Toán học sinh động bằng Manim:} Chuyển hóa các phương trình đại số tuyến tính khô khan thành Video hoạt hình (Animation) chất lượng cao. Video mô phỏng trực quan các phép biến đổi hình học của ma trận trong không gian, giúp giải thích trực diện bản chất của quá trình phân rã.
+    
+    \item \textbf{Quy trình phát triển phần mềm chuyên nghiệp:} Ứng dụng triệt để Git/GitHub trong quản lý mã nguồn nhóm, cấu trúc thư mục module hóa (\texttt{solvers}, \texttt{config}), kết hợp Jupyter Notebook và \LaTeX{} để xuất bản báo cáo học thuật đạt chuẩn.
+
+    \item Cài đặt thêm phương pháp lặp \textbf{Gauss-Seidel} với cơ chế tự động kiểm tra điều kiện hội tụ (ma trận chéo trội chặt hàng).
+    
+    \item Xây dựng kịch bản \texttt{benchmark} để đo lường thời gian thực thi trên các kích thước ma trận lớn ($n \in \{50, 100, 200, 500, 1000\}$). Vẽ đồ thị \textit{log-log} so sánh và chứng minh thực nghiệm chi phí tính toán của các phương pháp trực tiếp hoàn toàn bám sát đường lý thuyết $O(n^3)$.
+
+    \item Nghiên cứu thành công sự bất ổn định số học: Sử dụng \textbf{Số điều kiện $\kappa_2(A)$} kết hợp đối chiếu giữa ma trận Hilbert $H_n$ (ill-conditioned) và ma trận SPD ngẫu nhiên để bộc lộ hiện tượng khuếch đại sai số, giải thích sâu sắc giới hạn của hệ thống dấu phẩy động IEEE 754.
+\end{itemize}
+
+\subsection{Bài học rút ra}
+Quá trình thực hiện đồ án không chỉ là việc hiện thực hóa các công thức toán học lên ngôn ngữ lập trình, mà còn là một hành trình giúp nhóm thay đổi tư duy về khoa học tính toán:
+
+\begin{itemize}[itemsep=0.15cm]
+    \item \textbf{Sự khác biệt giữa Toán học lý thuyết và Tính toán số học:} Nhóm nhận ra rằng một thuật toán đúng trên giấy chưa chắc đã chạy đúng trên máy tính. Việc hiểu về cấu trúc lưu trữ số thực \textit{double precision} là chìa khóa để giải thích tại sao $0.1 + 0.2$ không bao giờ bằng $0.3$ tuyệt đối trong RAM.
+    \item \textbf{Tư duy phản biện qua dữ liệu:} Thay vì chấp nhận sai số, nhóm đã học được cách đặt câu hỏi "Tại sao?". Việc quan sát đường sai số bám sát ngưỡng $10^{-16}$ đã giúp nhóm tin tưởng vào thuật toán của mình hơn là việc chỉ nhìn vào kết quả nghiệm cuối cùng.
+    \item \textbf{Kỹ năng tối ưu hóa quy trình làm việc:} Nhóm đã làm quen với việc tự động hóa (Automation) thông qua \textit{latexmk} và các script \textit{benchmark}. Bài học về việc "lười biếng một cách thông minh" – viết script để máy tính tự đo đạc hàng ngàn phép tính – đã giúp nhóm tiết kiệm rất nhiều thời gian.
+    \item \textbf{Giá trị của việc chuẩn hóa (Standardization):} Việc thống nhất sử dụng \texttt{config.py} và quy chuẩn \texttt{list[list[float]]} ngay từ đầu là bài học xương máu về quản lý dự án, giúp việc ghép code giữa 5 thành viên diễn ra trơn tru mà không bị xung đột kiểu dữ liệu.
+\end{itemize}
+
+\subsection{Khó khăn gặp phải}
+Dưới đây là chi tiết các "nút thắt" mà nhóm đã phải nỗ lực tháo gỡ trong suốt 4 tuần thực hiện đồ án:
+
+\begin{itemize}[itemsep=0.15cm]
+    \item \textbf{Cuộc chiến với môi trường biên dịch \LaTeX:} Đây là rào cản đầu tiên và gây nản lòng nhất. Nhóm đã mất rất nhiều thời gian để xử lý lỗi \textit{"MiKTeX could not find the script engine perl"}. Việc cài đặt \textit{Strawberry Perl} và cấu chỉnh biến môi trường \textit{PATH} trên Windows là một trải nghiệm kỹ thuật ngoài dự kiến nhưng đầy bổ ích.
+    \item \textbf{Nghịch lý "Lỗi đỏ" trong bảng biểu:} Khi trình bày bảng phân công công việc, nhóm đã gặp lỗi \textit{"Not allowed in LR mode"} liên tục. Nguyên nhân là do việc ép giãn dòng bằng \texttt{\textbackslash setstretch} bên trong cột của bảng làm vỡ cấu trúc của \LaTeX. Nhóm đã phải nghiên cứu sâu về gói \texttt{array} và lệnh \texttt{\textbackslash linespread} để xử lý triệt tiêu lỗi này.
+    \item \textbf{Sự cố tràn bảng (Table Overflow):} Bảng phân công công việc ban đầu quá dài, đâm thủng mép giấy và biến mất ở trang sau. Nhóm đã phải học cách chuyển đổi từ môi trường \texttt{tabular} thông thường sang \texttt{longtable} để bảng có thể tự động ngắt trang và lặp lại tiêu đề một cách chuyên nghiệp.
+    \item \textbf{Ảo giác về sai số 0.0:} Trong giai đoạn kiểm thử, nhóm từng lầm tưởng thuật toán đạt độ chính xác tuyệt đối (sai số 0.0). Tuy nhiên, sau khi gỡ bỏ hàm làm tròn \texttt{zero\_rectify}, nhóm mới thấy được "bộ mặt thật" của nhiễu máy tính ở mức $10^{-17}$. Việc điều chỉnh biểu đồ sang thang đo \textit{Logarit} và thiết lập mặt sàn \textit{baseline} $10^{-18}$ là một thách thức về mặt hiển thị dữ liệu để đường đồ thị không bị đứt đoạn.
+    \item \textbf{Sự "bất lực" trước ma trận Hilbert:} Khi giải hệ phương trình với ma trận Hilbert, nhóm đã sốc khi thấy nghiệm giải ra lệch hoàn toàn so với lý thuyết (ví dụ nghiệm lý thuyết là $1.0$ nhưng máy tính ra $1.2$). Nhóm đã phải dành nhiều đêm để nghiên cứu về \textit{Số điều kiện (Condition Number)} và nhận ra rằng đây là đặc tính toán học của ma trận, không phải lỗi lập trình.
+    \item \textbf{Thử thách về thời gian và tài nguyên máy tính:} Khi chạy benchmark với $n=1000$, máy tính của một số thành viên bị treo hoặc chạy rất chậm. Nhóm đã phải tối ưu lại các vòng lặp trong Python và sử dụng \textit{Jupyter Notebook} để quản lý bộ nhớ tốt hơn, tránh việc tính toán lại các ma trận khổng lồ nhiều lần.
+\end{itemize}
