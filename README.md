@@ -1,7 +1,7 @@
 # ĐỒ án 1 - Toán ứng dụng và thống kê
 
 > **Môn học:** Toán ứng dụng và thống kê — Học kỳ 2, năm học 2025–2026  
-> **GVHD:** Ths. Lê Nhựt Nam, ThS. Võ Nam Thục Đoan   
+> **GVHD:** ThS. Lê Nhựt Nam, ThS. Võ Nam Thục Đoan   
 > **Ngôn ngữ:** Python 3.10+  
 
 ---
@@ -30,9 +30,9 @@ Dự án được chia thành ba phần chính:
 
 | Phần | Nội dung | Trạng thái |
 |------|----------|-----------|
-| **Part 1** | Khử Gauss, thế ngược, tính định thức, nghịch đảo, hạng, cơ sở | ✅ Hoàn thành |
-| **Part 2** | Chéo hóa ma trận (`A = PDP⁻¹`) và Phân rã SVD (`A = UΣVᵀ`) | ✅ Hoàn thành |
-| **Part 3** | Ứng dụng SVD, so sánh benchmark với NumPy | 🔄 Đang phát triển |
+| **Part 1** | Khử Gauss, thế ngược, tính định thức, nghịch đảo, hạng, cơ sở | Hoàn thành |
+| **Part 2** | Chéo hóa ma trận (`A = PDP⁻¹`) và Phân rã SVD (`A = UΣVᵀ`) | Hoàn thành |
+| **Part 3** | Ứng dụng SVD, so sánh benchmark với NumPy | Hoàn thành |
 
 ---
 
@@ -68,15 +68,11 @@ Singular Value Decomposition/
 │   └── analysis.ipynb          # Notebook phân tích kết quả
 │
 ├── report/                     # Báo cáo LaTeX
-│   ├── main.tex                # File chính báo cáo
 │   ├── report.tex              # Cấu trúc báo cáo
 │   ├── content/                # Các chương nội dung
 │   ├── assets/                 # Hình ảnh, biểu đồ trong báo cáo
-│   ├── main.pdf                # Báo cáo đã biên dịch (PDF)
 │   └── report.pdf              # Phiên bản PDF thứ hai
 │
-├── part1_demo.ipynb            # Notebook demo tổng hợp (root)
-├── backupNotebook.py           # Script backup notebook
 ├── config.py                   # Cấu hình toàn cục
 └── requirements.txt            # Danh sách thư viện phụ thuộc
 ```
@@ -96,40 +92,7 @@ trong đó:
 - $\Sigma \in \mathbb{R}^{m \times n}$ — ma trận đường chéo, với $\sigma_1 \geq \sigma_2 \geq \ldots \geq \sigma_r \geq 0$ là **singular values**
 - $V^T \in \mathbb{R}^{n \times n}$ — chuyển vị của ma trận trực giao phải, các hàng là **right singular vectors**
 
-### Phương pháp tính SVD (không dùng thư viện có sẵn)
-
-Thuật toán được cài đặt trong dự án này theo pipeline:
-
-```
-A  →  AᵀA  →  (trị riêng, vector riêng) của AᵀA  →  σᵢ, V  →  U
-```
-
-1. **Tính $A^TA$** — ma trận đối xứng nửa xác định dương
-2. **Thuật toán Jacobi** — tìm trị riêng và vector riêng của $A^TA$ (thay thế `numpy.linalg.eig`)
-3. **Singular values** — $\sigma_i = \sqrt{\lambda_i}$ với $\lambda_i$ là trị riêng của $A^TA$
-4. **Ma trận V** — các vector riêng chuẩn hóa, sắp xếp theo $\sigma_i$ giảm dần
-5. **Ma trận U** — tính từ $u_i = \frac{1}{\sigma_i} A v_i$; bổ sung cơ sở trực giao cho không gian null
-
-### Thuật toán Jacobi (Jacobi Eigenvalue Algorithm)
-
-Để tìm trị riêng của ma trận đối xứng $S \in \mathbb{R}^{n \times n}$, thuật toán áp dụng liên tiếp các phép quay Jacobi:
-
-$$S^{(k+1)} = J^T S^{(k)} J$$
-
-với $J$ là ma trận quay Givens triệt tiêu phần tử off-diagonal lớn nhất tại mỗi bước. Thuật toán hội tụ khi tất cả phần tử ngoài đường chéo đều < `EPSILON = 1e-12`.
-
-### Chéo hóa ma trận
-
-Với ma trận vuông $A \in \mathbb{R}^{n \times n}$ có đủ $n$ vector riêng độc lập tuyến tính:
-
-$$A = P D P^{-1}$$
-
-trong đó $D$ là ma trận đường chéo chứa các trị riêng, $P$ là ma trận gồm các vector riêng tương ứng theo cột.
-
-**Pipeline cài đặt:**
-1. **Thuật toán QR lặp** — tìm trị riêng xấp xỉ (thay thế `numpy.linalg.eigvals`)
-2. **RREF + không gian null** — tìm vector riêng tương ứng với mỗi trị riêng
-3. **Xác minh** — kiểm tra $AP = PD$ với sai số $< 10^{-6}$
+> **Ghi chú:** Chi tiết về chứng minh Toán học, giải thuật và phân tích độ phức tạp ($O(n^3)$), vui lòng xem chi tiết tại [Báo cáo Kỹ thuật (PDF)](report/report.pdf).
 
 ---
 
@@ -357,10 +320,34 @@ pip install -r requirements.txt
 
 ## Chạy thử nghiệm
 
-### Kiểm thử Part 1 (tất cả module)
+### Kiểm thử Part 1 
+
+**Kiểm thử tất cả module**
 
 ```bash
 python part1/run_all_tests.py
+```
+
+**Kiểm thử từng module**
+
+```bash
+# Khử Gauss
+python part1/gaussian_elimination.py
+
+# Thế ngược
+python part1/back_substitution.py
+
+# Tính định thức
+python part1/determinant.py
+
+# Tính nghịch đảo
+python part1/inverse.py
+
+# Tính hạng
+python part1/rank.py
+
+# Tính cơ sở
+python part1/basis.py
 ```
 
 ### Kiểm thử Part 2
@@ -383,15 +370,27 @@ jupyter notebook
 ### Cấu trúc kết quả chạy (ví dụ `decomposition.py`)
 
 ```
-Kiểm thử: Ma trận vuông full-rank 3x3
-=> PASSED (sai số lớn nhất = 3.553e-15)
-Kiểm thử: Ma trận chữ nhật ngang 2x3
-=> PASSED (sai số lớn nhất = 6.661e-16)
-Kiểm thử: Ma trận suy biến (hai dòng phụ thuộc)
-=> PASSED (sai số lớn nhất = 0.000e+00)
-...
-Kiểm thử: Dữ liệu rỗng
-=> PASSED (Bắt đúng lỗi mong đợi: Ma trận A không được rỗng)
+============================================================================
+TEST SUITE: PHÂN RÃ GIÁ TRỊ SUY BIẾN (SVD)
+============================================================================
+ Ma trận vuông full-rank 3x3                   PASSED  (err = 2.22e-15)
+ Ma trận chữ nhật ngang 2x3                    PASSED  (err = 8.88e-16)
+ Ma trận chữ nhật dọc 3x2                      PASSED  (err = 8.88e-16)
+ Ma trận suy biến (hai dòng phụ thuộc)         PASSED  (err = 8.88e-16)
+ Ma trận toàn 0 kích thước 3x4                 PASSED  (err = 0.00e+00)
+ Ma trận đơn vị 4x4                            PASSED  (err = 0.00e+00)
+ Ma trận đường chéo có singular values lặp     PASSED  (err = 0.00e+00)
+ Ma trận chứa số âm                            PASSED  (err = 4.44e-16)
+ Ma trận kích thước 1x1                        PASSED  (err = 0.00e+00)
+ Ma trận 1xN                                   PASSED  (err = 4.44e-16)
+ Ma trận Nx1                                   PASSED  (err = 0.00e+00)
+ Ma trận số rất nhỏ gần EPSILON                PASSED  (err = 2.00e-13)
+ Ma trận Hilbert 3x3 (kiểm tra độ ổn định s... PASSED  (err = 6.69e-14)
+ Dữ liệu rỗng                                  PASSED  (Bắt đúng lỗi: Ma trận A không được rỗng)
+ Ma trận có 0 cột                              PASSED  (Bắt đúng lỗi: Ma trận A phải có ít nhất 1 cột)      
+ Ma trận không cùng số cột                     PASSED  (Bắt đúng lỗi: Tất cả các dòng của A phải cùng số cột)
+---------------------------------------------------------------------------
+ TỔNG KẾT: 16/16 PASSED
 ```
 
 ---

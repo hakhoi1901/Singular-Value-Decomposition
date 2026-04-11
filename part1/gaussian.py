@@ -16,8 +16,10 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from config import is_zero, zero_rectify
+from config import is_zero, zero_rectify, TestLogger
 from back_substitution import back_substitution
+from test_cases import GAUSSIAN_ELIMINATE_TEST_CASES
+from utils import is_upper_triangular
 
 
 def gaussian_eliminate(A: list[list[float]], b: list[float]):
@@ -122,16 +124,9 @@ def gaussian_eliminate(A: list[list[float]], b: list[float]):
     return U, x, swap_count
 
 
-def _is_upper_triangular(U: list[list[float]], tol: float = 1e-9) -> bool:
-    n = len(U)
-    for i in range(1, min(n, len(U[0]))):
-        for j in range(i):
-            if abs(U[i][j]) > tol:
-                return False
-    return True
 
 
-def test_gaussian_eliminate():
+def test_gaussian_eliminate(test_cases: list[dict]):
     import os
     import sys
     import warnings
@@ -144,96 +139,34 @@ def test_gaussian_eliminate():
 
     warnings.simplefilter("ignore", UserWarning)
 
-    test_cases = [
-        {
-            "name": "Don vi 2x2",
-            "A": [[1.0, 0.0], [0.0, 1.0]],
-            "b": [3.0, -1.0],
-            "expect_swaps": 0,
-        },
-        {
-            "name": "He 2x2 (partial pivot doi dong 1 lan)",
-            "A": [[1.0, 2.0], [3.0, 4.0]],
-            "b": [0.0, -2.0],
-            "expect_x": [-2.0, 1.0],
-            "expect_swaps": 1,
-        },
-        {
-            "name": "Hoan vi [[0,1],[1,0]]",
-            "A": [[0.0, 1.0], [1.0, 0.0]],
-            "b": [2.0, 1.0],
-            "expect_x": [1.0, 2.0],
-            "expect_swaps": 1,
-        },
-        {
-            "name": "3x3 cung ma tran test inverse",
-            "A": [[1.0, 0.0, 5.0], [2.0, 1.0, 6.0], [3.0, 4.0, 0.0]],
-            "b": [6.0, 10.0, 11.0],
-            "expect_x": [1.0, 2.0, 1.0],
-        },
-        {
-            "name": "4x4 cheo troi (nghiem don gian)",
-            "A": [
-                [4.0, 1.0, 0.0, 0.0],
-                [1.0, 4.0, 1.0, 0.0],
-                [0.0, 1.0, 4.0, 1.0],
-                [0.0, 0.0, 1.0, 4.0],
-            ],
-            "b": [5.0, 6.0, 6.0, 5.0],
-            "expect_x": [1.0, 1.0, 1.0, 1.0],
-        },
-        {
-            "name": "Cot dau tien gan 0 — can chon chot xa hon",
-            "A": [[1e-12, 1.0], [1.0, 1.0]],
-            "b": [3.0, 3.0],
-        },
-        {
-            "name": "Suy bien [[1,2],[2,4]] + b nhat quan",
-            "A": [[1.0, 2.0], [2.0, 4.0]],
-            "b": [1.0, 2.0],
-            "expect_non_unique": True,
-        },
-        {
-            "name": "He vo nghiem: [[1,1],[1,1]] + b bat nhat quan",
-            "A": [[1.0, 1.0], [1.0, 1.0]],
-            "b": [1.0, 2.0],
-            "expect_non_unique": True,  # back_substitution tra ve [] vi dong 0 = non-zero
-        },
-        {
-            "name": "He 2x3 (nhieu an hon phuong trinh — co the vo so nghiem)",
-            "A": [[1.0, 1.0, 1.0], [1.0, 1.0, 1.0]],
-            "b": [3.0, 3.0],
-            "skip_backsub": True,
-        },
-        {
-            "name": "b sai kich thuoc",
-            "A": [[1.0, 0.0], [0.0, 1.0]],
-            "b": [1.0],
-            "should_raise": ValueError,
-        },
-    ]
+    TestLogger.print_suite_header("Khử Gauss (Gaussian eliminate)")
+    
+    passed_count = 0
+    total_count = len(test_cases)
 
     for case in test_cases:
-        print(f"  - {case['name']}")
         try:
             U, x, swaps = gaussian_eliminate(case["A"], case["b"])
             
             if case.get("should_raise"):
-                assert False, "expected ValueError"
+                TestLogger.print_result(case['name'], False, "Lẽ ra phải phát sinh ValueError")
+                continue
                 
             if not case.get("skip_backsub"):
-                assert _is_upper_triangular(U), "U phai tam giac tren (he vuong day du hang)"
+                assert is_upper_triangular(U), "U phai tam giac tren (he vuong day du hang)"
                 
             if "expect_swaps" in case:
                 assert swaps == case["expect_swaps"], f"swap_count={swaps}"
                 
             if case.get("skip_backsub"):
-                print("    => PASSED")
+                TestLogger.print_result(case['name'], True)
+                passed_count += 1
                 continue
                 
             if case.get("expect_non_unique"):
                 assert x == [], "Expected empty solution for non-unique system"
-                print("    => PASSED")
+                TestLogger.print_result(case['name'], True)
+                passed_count += 1
                 continue
                 
             if "expect_x" in case:
@@ -242,14 +175,19 @@ def test_gaussian_eliminate():
                     
             e = verify_solution(case["A"], x, case["b"])
             assert e < 1e-8, f"||b-Ax||={e}"
-            print(f"    => PASSED (e = {e:.2e})")
+            TestLogger.print_result(case['name'], True, f"(e = {e:.2e})")
+            passed_count += 1
             
         except ValueError as err:
             if case.get("should_raise") == ValueError:
-                print(f"    => PASSED (Caught expected error: {err})")
+                TestLogger.print_result(case['name'], True, f"(Bắt đúng lỗi: {err})")
+                passed_count += 1
             else:
-                print(f"    => FAILED: Unexpected error {err}")
-                raise
+                TestLogger.print_result(case['name'], False, f"(Lỗi ngoài mong đợi: {err})")
+        except AssertionError as err:
+            TestLogger.print_result(case['name'], False, f"(Assertion: {err})")
+            
+    TestLogger.print_summary(passed_count, total_count)
 
 if __name__ == "__main__":
-    test_gaussian_eliminate()
+    test_gaussian_eliminate(GAUSSIAN_ELIMINATE_TEST_CASES)
