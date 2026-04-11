@@ -20,7 +20,6 @@ def generate_spd_matrix(n: int) -> list[list[float]]:
     """
     Sinh ma trận đối xứng xác định dương (Well-conditioned).
     Thuật toán: A = X * X^T + n * I  (X ngẫu nhiên).
-    Dùng numpy để tạo ma trận nhanh.
     """
     import numpy as np
     X = np.random.rand(n, n)
@@ -39,7 +38,6 @@ def generate_hilbert_matrix(n: int) -> list[list[float]]:
 def calculate_condition_number(A: list[list[float]]) -> float:
     """
     Tính số điều kiện κ₂(A) = ||A||₂ · ||A⁻¹||₂  (chuẩn spectral).
-    Dùng numpy để tính nhanh và chính xác.
     """
     import numpy as np
     return float(np.linalg.cond(A, p=2))

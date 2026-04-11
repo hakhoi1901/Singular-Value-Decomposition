@@ -143,3 +143,36 @@
      ≲ n · ε_machine — hoàn toàn chấp nhận được với mọi n thực tế.
 
 ======================================================================
+
+
+=============================================================================
+ BẢNG THỜI GIAN TRUNG BÌNH (5 LẦN CHẠY) - PURE PYTHON (SOLVERS.PY)
+=============================================================================
+    n |     Loại |        Gauss |          SVD |  Gauss-Seidel
+--------------------------------------------------------------
+   50 |  Hilbert |          ERR |      0.5935s |           ERR
+   50 |      SPD |      0.0119s |      0.7106s |           ERR
+  100 |  Hilbert |          ERR |      8.7200s |           ERR
+  100 |      SPD |      0.0964s |     11.1704s |           ERR
+  200 |  Hilbert |      0.3876s |  T.O. (>60s) |           ERR
+  200 |      SPD |      0.7774s |  T.O. (>60s) |           ERR
+  500 |  Hilbert |      4.9703s |  T.O. (>60s) |           ERR
+  500 |      SPD |     14.1605s |  T.O. (>60s) |           ERR
+ 1000 |  Hilbert |  T.O. (>60s) |  T.O. (>60s) |           ERR
+ 1000 |      SPD |  T.O. (>60s) |  T.O. (>60s) |           ERR
+--------------------------------------------------------------
+ T.O. : Timeout (Bỏ qua do thời gian chạy Pure Python quá lâu).
+ ERR  : Ma trận không thỏa mãn điều kiện hội tụ (Gauss-Seidel).
+
+
+=============================================================================
+ BẢNG THỜI GIAN TRUNG BÌNH (INCREMENTAL LOGGING) - PURE PYTHON
+=============================================================================
+    n |     Loại |        Gauss |          SVD |  Gauss-Seidel
+--------------------------------------------------------------
+   50 |  Hilbert |          ERR |      0.6502s |           ERR
+   50 |      SPD |      0.0136s |      0.7576s |           ERR
+  100 |  Hilbert |          ERR |     10.1721s |           ERR
+  100 |      SPD |      0.1147s |     12.1804s |           ERR
+  200 |  Hilbert |      0.3917s |    128.2082s |           ERR
+  200 |      SPD |      0.8094s |    339.9578s |           ERR

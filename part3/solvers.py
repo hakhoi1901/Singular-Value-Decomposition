@@ -9,8 +9,8 @@ import math
 from pathlib import Path
 
 # ----- Path bootstrap -----
-_PART3 = Path(__file__).resolve().parent          # .../part3
-_ROOT  = _PART3.parent                             # .../VSCodeTUDTK
+_PART3 = Path(__file__).resolve().parent
+_ROOT  = _PART3.parent
 _PART1 = _ROOT / "part1"
 _PART2 = _ROOT / "part2"
 

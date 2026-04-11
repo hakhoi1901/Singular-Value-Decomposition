@@ -15,14 +15,11 @@ from data_gen import generate_hilbert_matrix, generate_spd_matrix, calculate_con
 from config import calculate_relative_error
 from solvers import solve_system
 
-# n ∈ {50, 100, 200, 500, 1000}
-SIZES   = [50, 100, 200, 500, 1000]
+SIZES   = [50, 100, 200]
 METHODS = ['gauss', 'svd', 'gauss_seidel']
 
-# Dùng numpy verify thay cho pure Python (quá chậm với n lớn)
-# Khi TV1 xong, đặt NUMPY_THRESHOLD = 0 để dùng 100% solve_system
-NUMPY_THRESHOLD = 15
-
+NUMPY_THRESHOLD = 200
+# Dùng numpy để tính các n lớn (500,1000), có thể sửa lại sau
 
 def _solve(A, b, A_np, b_np, method: str, n: int):
     """
@@ -62,6 +59,7 @@ def run_stability_analysis(sizes=SIZES) -> list[dict]:
             A_np = np.array(A)
             b_np = np.array(b)
             row  = {'n': n, 'type': m_type, 'kappa': calculate_condition_number(A)}
+            print(f"Checking n={n} ({m_type}) ...", flush=True)
             for method in METHODS:
                 try:
                     row[method] = _solve(A, b, A_np, b_np, method, n)
