@@ -18,6 +18,9 @@ from inverse import test_inverse
 
 
 def run_tests():
+    """
+    Chạy tất cả các bài kiểm tra cho từng phần của đồ án.
+    """
     print("TESTING")
 
     print("\n=== [Gaussian eliminate] ===")

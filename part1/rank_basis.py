@@ -9,6 +9,24 @@ from config import is_zero, zero_rectify
 
 
 def to_rref(A: list[list[float]]):
+    """
+    Đưa ma trận A về dạng bậc thang rút gọn (RREF) bằng khử Gauss-Jordan.
+
+    Thuật toán:
+        1. Duyệt qua từng cột của ma trận.
+        2. Tìm dòng có phần tử khác 0 lớn nhất (pivot) tại cột hiện tại (partial pivoting).
+        3. Hoán đổi dòng để đưa pivot lên vị trí hiện tại.
+        4. Chuẩn hóa dòng pivot để phần tử chốt bằng 1.
+        5. Khử các phần tử khác 0 trong cột hiện tại (cả trên và dưới dòng pivot).
+        6. Lặp lại cho đến khi toàn bộ ma trận được đưa về RREF.
+
+    Tham số:
+        A: Ma trận đầu vào (m × n)
+
+    Trả về:
+        - rref: Ma trận sau khi đưa về RREF
+        - pivot_cols: Danh sách các chỉ số cột chứa pivot
+    """
     n_rows = len(A)
     n_cols = len(A[0])
     rref = [row[:] for row in A]  # Copy ma trận
@@ -47,6 +65,29 @@ def to_rref(A: list[list[float]]):
 
 
 def rank_and_basis(A: list[list[float]]):
+    """
+    Tính hạng và tìm cơ sở cho không gian cột, không gian hàng và không gian null của ma trận A.
+
+    Thuật toán:
+        1. Đưa ma trận A về dạng bậc thang rút gọn (RREF) bằng hàm to_rref().
+        2. Hạng (rank) của ma trận bằng số lượng pivot (số cột chứa pivot).
+        3. Cơ sở không gian cột (Column Basis): Các cột tương ứng của ma trận gốc A tại vị trí pivot.
+        4. Cơ sở không gian hàng (Row Basis): Các dòng khác 0 trong ma trận RREF.
+        5. Cơ sở không gian null (Null Basis): Tìm nghiệm của hệ phương trình tuyến tính Ax = 0
+           bằng cách sử dụng ma trận RREF.
+
+    Tham số:
+        A: Ma trận đầu vào (m × n)
+
+    Trả về:
+        - rank: Hạng của ma trận
+        - col_basis: Danh sách các vector cơ sở không gian cột
+        - row_basis: Danh sách các vector cơ sở không gian hàng
+        - null_basis: Danh sách các vector cơ sở không gian null
+
+    Xử lý ngoại lệ:
+        - Nếu A là ma trận rỗng, trả về 0, [], [], []
+    """
     if not A or not A[0]:
         return 0, [], [], []
 

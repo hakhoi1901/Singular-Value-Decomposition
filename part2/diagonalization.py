@@ -1,4 +1,4 @@
-﻿"""
+"""
 Cài đặt chéo hóa ma trận không dùng các hàm giải thuật có sẵn.
 """
 from __future__ import annotations
@@ -15,6 +15,18 @@ from config import EPSILON, is_zero, zero_rectify
 
 
 def _validate_square_matrix(A: list[list[float]]) -> None:
+    """
+    Kiểm tra xem ma trận có phải là ma trận vuông hay không.
+
+    Tham số:
+        A: Ma trận cần kiểm tra
+
+    Trả về:
+        None
+
+    Xử lý ngoại lệ:
+        ValueError: Nếu A không phải là ma trận vuông
+    """
     if not A:
         raise ValueError("Ma trận A không được rỗng")
 
@@ -31,26 +43,82 @@ def _validate_square_matrix(A: list[list[float]]) -> None:
 
 
 def _identity(n: int) -> list[list[float]]:
+    """
+    Tạo ma trận đơn vị kích thước n x n.
+
+    Tham số:
+        n: Kích thước của ma trận đơn vị
+
+    Trả về:
+        Ma trận đơn vị kích thước n x n
+    """
     return [[1.0 if i == j else 0.0 for j in range(n)] for i in range(n)]
 
 
 def _transpose(A: list[list[float]]) -> list[list[float]]:
+    """
+    Tính ma trận chuyển vị của ma trận A.
+
+    Tham số:
+        A: Ma trận cần tính chuyển vị
+
+    Trả về:
+        Ma trận chuyển vị của A
+    """
     return [list(col) for col in zip(*A)]
 
 
 def _dot(u: list[float], v: list[float]) -> float:
+    """
+    Tính tích vô hướng của hai vector.
+
+    Tham số:
+        u: Vector thứ nhất
+        v: Vector thứ hai
+
+    Trả về:
+        Tích vô hướng của u và v
+    """
     return sum(ui * vi for ui, vi in zip(u, v))
 
 
 def _norm(v: list[float]) -> float:
+    """
+    Tính chuẩn Euclidean của vector.
+
+    Tham số:
+        v: Vector cần tính chuẩn
+
+    Trả về:
+        Chuẩn Euclidean của v
+    """
     return math.sqrt(max(0.0, _dot(v, v)))
 
 
 def _is_zero_tol(x: float, tol: float) -> bool:
+    """
+    Kiểm tra xem một số có gần bằng 0 hay không.
+
+    Tham số:
+        x: Số cần kiểm tra
+        tol: Độ dung sai
+
+    Trả về:
+        True nếu x gần bằng 0, False ngược lại
+    """
     return is_zero(x) or abs(x) <= tol
 
 
 def _rectify_matrix(M: list[list[float]]) -> list[list[float]]:
+    """
+    Chuẩn hóa ma trận M bằng cách loại bỏ các giá trị gần bằng 0.
+
+    Tham số:
+        M: Ma trận cần chuẩn hóa
+
+    Trả về:
+        Ma trận đã được chuẩn hóa
+    """
     rectified: list[list[float]] = []
     for row in M:
         rectified_row: list[float] = []
@@ -64,6 +132,15 @@ def _rectify_matrix(M: list[list[float]]) -> list[list[float]]:
 
 
 def _rectify_vector(v: list[float]) -> list[float]:
+    """
+    Chuẩn hóa vector v bằng cách loại bỏ các giá trị gần bằng 0.
+
+    Tham số:
+        v: Vector cần chuẩn hóa
+
+    Trả về:
+        Vector đã được chuẩn hóa
+    """
     rectified: list[float] = []
     for value in v:
         x = zero_rectify(float(value))
@@ -74,6 +151,19 @@ def _rectify_vector(v: list[float]) -> list[float]:
 
 
 def _matmul(A: list[list[float]], B: list[list[float]]) -> list[list[float]]:
+    """
+    Nhân hai ma trận A và B.
+
+    Tham số:
+        A: Ma trận thứ nhất
+        B: Ma trận thứ hai
+
+    Trả về:
+        Ma trận kết quả C = A * B
+
+    Xử lý ngoại lệ:
+        ValueError: Nếu kích thước hai ma trận không tương thích
+    """
     m = len(A)
     p = len(A[0])
     if len(B) != p:
@@ -92,6 +182,19 @@ def _matmul(A: list[list[float]], B: list[list[float]]) -> list[list[float]]:
 
 
 def _max_abs_diff(A: list[list[float]], B: list[list[float]]) -> float:
+    """
+    Tính sai số lớn nhất giữa hai ma trận.
+
+    Tham số:
+        A: Ma trận thứ nhất
+        B: Ma trận thứ hai
+
+    Trả về:
+        Sai số lớn nhất
+
+    Xử lý ngoại lệ:
+        ValueError: Nếu hai ma trận không có cùng kích thước
+    """
     if len(A) != len(B):
         raise ValueError("Hai ma trận phải có cùng số dòng")
     if A and len(A[0]) != len(B[0]):
@@ -107,6 +210,16 @@ def _max_abs_diff(A: list[list[float]], B: list[list[float]]) -> float:
 
 
 def _orthogonalize(v: list[float], basis: list[list[float]]) -> list[float]:
+    """
+    Trực giao hóa vector v với cơ sở đã cho.
+
+    Tham số:
+        v: Vector cần trực giao hóa
+        basis: Cơ sở đã cho
+
+    Trả về:
+        Vector đã được trực giao hóa
+    """
     w = [float(x) for x in v]
     for b in basis:
         coeff = _dot(w, b)
@@ -118,6 +231,19 @@ def _orthogonalize(v: list[float], basis: list[list[float]]) -> list[float]:
 
 
 def _find_new_unit_vector(basis: list[list[float]], dim: int) -> list[float]:
+    """
+    Tìm vector đơn vị mới trực giao với cơ sở đã cho.
+
+    Tham số:
+        basis: Cơ sở đã cho
+        dim: Kích thước của vector
+
+    Trả về:
+        Vector đơn vị mới
+
+    Xử lý ngoại lệ:
+        ValueError: Nếu không thể xây dựng cơ sở trực giao
+    """
     for idx in range(dim):
         candidate = [0.0] * dim
         candidate[idx] = 1.0
@@ -135,6 +261,15 @@ def _find_new_unit_vector(basis: list[list[float]], dim: int) -> list[float]:
 
 
 def _normalize(v: list[float]) -> list[float]:
+    """
+    Chuẩn hóa vector v về vector đơn vị.
+
+    Tham số:
+        v: Vector cần chuẩn hóa
+
+    Trả về:
+        Vector đã được chuẩn hóa
+    """
     nv = _norm(v)
     if is_zero(nv):
         return [0.0 for _ in v]
@@ -142,6 +277,15 @@ def _normalize(v: list[float]) -> list[float]:
 
 
 def _qr_decomposition(A: list[list[float]]) -> tuple[list[list[float]], list[list[float]]]:
+    """
+    Phân tích QR của ma trận A bằng thuật toán Gram-Schmidt.
+
+    Tham số:
+        A: Ma trận cần phân tích
+
+    Trả về:
+        Tuple (Q, R) trong đó Q là ma trận trực giao, R là ma trận tam giác trên
+    """
     n = len(A)
     q_cols: list[list[float]] = []
     R = [[0.0 for _ in range(n)] for _ in range(n)]
@@ -174,6 +318,20 @@ def _qr_decomposition(A: list[list[float]]) -> tuple[list[list[float]], list[lis
 
 
 def _qr_eigen_diagonal(A: list[list[float]], tol: float = 1e-10, max_iter: int = 4000) -> list[float]:
+    """
+    Tìm giá trị riêng của ma trận A bằng thuật toán QR.
+
+    Tham số:
+        A: Ma trận cần tìm giá trị riêng
+        tol: Độ dung sai
+        max_iter: Số lần lặp tối đa
+
+    Trả về:
+        Danh sách các giá trị riêng
+
+    Xử lý ngoại lệ:
+        ValueError: Nếu thuật toán không hội tụ
+    """
     n = len(A)
     A_k = [row[:] for row in A]
 
@@ -196,6 +354,16 @@ def _qr_eigen_diagonal(A: list[list[float]], tol: float = 1e-10, max_iter: int =
 
 
 def _group_eigenvalues(values: list[float], tol: float = 1e-7) -> list[tuple[float, int]]:
+    """
+    Nhóm các giá trị riêng gần bằng nhau.
+
+    Tham số:
+        values: Danh sách các giá trị riêng
+        tol: Độ dung sai
+
+    Trả về:
+        Danh sách các tuple (giá trị riêng, số lần xuất hiện)
+    """
     if not values:
         return []
 
@@ -216,6 +384,17 @@ def _group_eigenvalues(values: list[float], tol: float = 1e-7) -> list[tuple[flo
 
 
 def _rref(A: list[list[float]], tol: float = 1e-8) -> tuple[list[list[float]], list[int]]:
+    """
+    Đưa ma trận A về dạng bậc thang rút gọn (RREF) bằng khử Gauss-Jordan.
+
+    Tham số:
+        A: Ma trận cần đưa về RREF
+        tol: Độ dung sai
+
+    Trả về:
+        Tuple (RREF, pivot_cols) trong đó RREF là ma trận sau khi đưa về RREF,
+        pivot_cols là danh sách các chỉ số cột chứa pivot
+    """
     if not A:
         return [], []
 
@@ -268,6 +447,16 @@ def _rref(A: list[list[float]], tol: float = 1e-8) -> tuple[list[list[float]], l
 
 
 def _null_space_basis(A: list[list[float]], tol: float = 1e-8) -> list[list[float]]:
+    """
+    Tìm cơ sở cho không gian null của ma trận A.
+
+    Tham số:
+        A: Ma trận cần tìm cơ sở không gian null
+        tol: Độ dung sai
+
+    Trả về:
+        Danh sách các vector cơ sở không gian null
+    """
     if not A:
         return []
 
@@ -430,6 +619,11 @@ def test_diagonalize() -> None:
             "input": [[1.0, 2.0], [3.0]],
             "should_raise": ValueError,
         },
+        {
+            "name": "Ma trận tam giác dưới (kiểm tra khả năng quét và khử của QR)",
+            "input": [[2.0, 0.0, 0.0], [1.0, 3.0, 0.0], [-1.0, 4.0, 5.0]],
+            "tol": 1e-6,
+        },
     ]
 
     for case in test_cases:
@@ -458,6 +652,8 @@ def test_diagonalize() -> None:
                 print(f"=> PASSED (Bắt đúng lỗi mong đợi: {e})")
             else:
                 print(f"=> FAILED: Lỗi ngoài mong đợi: {e}")
+    
+    
 
 if __name__ == "__main__":
     test_diagonalize()

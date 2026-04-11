@@ -10,6 +10,28 @@ from config import zero_rectify
 
 
 def verify_solution(A: list[list[float]], x: list[float], b: list[float]) -> float:
+    """
+    Tính sai số Euclidean (L2 norm) của vector sai số (residual) cho hệ phương trình tuyến tính Ax = b.
+
+    Thuật toán:
+        1. Tính tích Ax (ma trận A nhân vector x).
+        2. Tính vector sai số r = b - Ax.
+        3. Tính chuẩn L2 của vector sai số: e = sqrt(sum(ri^2)).
+
+    Tham số:
+        A: Ma trận hệ số (m × n)
+        x: Vector nghiệm (n × 1)
+        b: Vector vế phải (m × 1)
+
+    Trả về:
+        e: Sai số Euclidean (float)
+
+    Xử lý ngoại lệ:
+        - Nếu A hoặc x rỗng, trả về 0.0
+    """
+    if not A or not A[0] or not x:
+        return 0.0
+
     n_rows = len(A)
     n_cols = len(A[0])
 
@@ -106,7 +128,7 @@ def test_verify_solution():
     ]
 
     print("--- Test verify_solution ---")
-    failed_count = 0  # <--- Dùng biến đếm số test rớt cho chuẩn
+    failed_count = 0
 
     for idx, case in enumerate(test_cases):
         e = verify_solution(case['A'], case['x'], case['b'])
@@ -131,14 +153,11 @@ def test_verify_solution():
                 assert e > 0.5, f"e = {e:.2e} qua nho voi nghiem sai"
                 print(f"    => PASSED  (x sai => x_np != x_given [OK], e = {e:.2e})")
 
-            # --- KHỐI LỆNH MỚI THÊM CHO HỆ ĐIỀU KIỆN KÉM ---
             elif case.get("expect_instability"):
                 x_np = np.linalg.solve(A_np, b_np)
-                # Bắt buộc nghiệm giải ra (x_np) phải KHÁC XA nghiệm lý thuyết (x_given) do bị nhiễu
                 is_drifted = not np.allclose(x_np, x_given, atol=1e-4)
                 assert is_drifted, "Bất ngờ chưa, nghiệm không bị trôi dạt!"
                 print(f"    => PASSED  (Bị nhiễu số học: x_np = {np.round(x_np, 2)} khác xa x_given, e = {e:.2e})")
-            # -----------------------------------------------
 
             else:
                 x_np = np.linalg.solve(A_np, b_np)

@@ -22,40 +22,56 @@ from back_substitution import back_substitution
 
 def gaussian_eliminate(A: list[list[float]], b: list[float]):
     """
-    Đưa [A | b] về dạng bậc thang dòng (REF) bằng khử Gauss có chọn phần tử chốt cột.
+    Giải hệ phương trình tuyến tính Ax = b bằng phương pháp khử Gauss.
 
-    A có kích thước m × n (m hàng, n cột). len(b) phải bằng m.
+    Thuật toán:
+        1. Đưa [A | b] về dạng bậc thang dòng (REF) bằng khử Gauss có chọn phần tử chốt cột.
+        2. A có kích thước m × n (m hàng, n cột). len(b) phải bằng m.
+        3. Khi không tìm được pivot tại một cột (các phần tử dưới đều xấp xỉ 0): in
+           "Không có pivot tại cột k" và bỏ qua cột đó (không raise).
+        4. Nếu sau đó gọi "back_substitution" trên tam giác thu được mà gặp đường chéo ~0,
+           hàm đó sẽ in "Hệ không có nghiệm duy nhất" và trả về "[]".
 
-    Khi không tìm được pivot tại một cột (các phần tử dưới đều ~0): in
-    ``Không có pivot tại cột k`` và bỏ qua cột đó (không raise).
+    Tham số:
+        A: Ma trận hệ số (m × n)
+        b: Vector vế phải (m,)
 
-    Nếu sau đó gọi ``back_substitution`` trên tam giác thu được mà gặp đường chéo ~0,
-    hàm đó sẽ in ``Hệ không có nghiệm duy nhất`` và trả về ``[]``.
-
-    Returns:
+    Trả về:
         U: ma trận hệ số sau biến đổi (m × n), dạng bậc thang dòng
         x: vector nghiệm (độ dài n), trả về [] nếu vô số nghiệm hoặc vô nghiệm
         swap_count: số lần hoán đổi dòng
+
+    Xử lý ngoại lệ:
+        - Khi A rỗng: raise ValueError
+        - Khi A không vuông: raise ValueError
+        - Khi len(b) != m: raise ValueError
     """
+
+    # Kiểm tra ma trận
     if not A:
         raise ValueError("Ma trận A rỗng")
 
+    # Kiểm tra kích thước ma trận
     m = len(A)
     n = len(A[0])
     if any(len(row) != n for row in A):
         raise ValueError("Mọi hàng của A phải cùng số cột")
 
+    # Kiểm tra vector b
     if len(b) != m:
         raise ValueError("Vector b phải có độ dài bằng số hàng của A")
 
+    # Tạo ma trận mở rộng
     M = [list(A[i]) + [float(b[i])] for i in range(m)]
     swap_count = 0
     pivot_row = 0
 
+    # Vòng lặp chính
     for j in range(n):
         if pivot_row >= m:
             break
 
+        # Tìm phần tử chốt
         p = pivot_row
         best = abs(M[pivot_row][j])
         for i in range(pivot_row + 1, m):
@@ -63,13 +79,16 @@ def gaussian_eliminate(A: list[list[float]], b: list[float]):
             if v > best:
                 best = v
                 p = i
-
+        
+        # Kiểm tra pivot
         pivot = M[p][j]
 
+        # Nếu pivot bằng 0, bỏ qua cột
         if is_zero(pivot):
             print(f"Không có pivot tại cột {j + 1}")
             continue
 
+        # Kiểm tra pivot nhỏ
         if abs(pivot) < 1e-8:
             warnings.warn(
                 "Pivot is very small; the system may be ill-conditioned.",
@@ -173,6 +192,12 @@ def test_gaussian_eliminate():
             "A": [[1.0, 2.0], [2.0, 4.0]],
             "b": [1.0, 2.0],
             "expect_non_unique": True,
+        },
+        {
+            "name": "He vo nghiem: [[1,1],[1,1]] + b bat nhat quan",
+            "A": [[1.0, 1.0], [1.0, 1.0]],
+            "b": [1.0, 2.0],
+            "expect_non_unique": True,  # back_substitution tra ve [] vi dong 0 = non-zero
         },
         {
             "name": "He 2x3 (nhieu an hon phuong trinh — co the vo so nghiem)",

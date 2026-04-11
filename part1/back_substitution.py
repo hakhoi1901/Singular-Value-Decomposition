@@ -20,33 +20,50 @@ def back_substitution(U: list[list[float]], c: list[float]) -> list[float]:
     """
     Giải hệ phương trình tam giác trên Ux = c từ dưới lên.
 
+    Thuật toán:
+        1. Kiểm tra trường hợp vô nghiệm (dòng toàn 0 nhưng vế phải khác 0).
+        2. Nếu có biến tự do (đường chéo bằng 0), hệ có vô số nghiệm:
+           - Tìm một nghiệm riêng x_0 bằng cách cho tất cả biến tự do = 0.
+           - Tìm các vector cơ sở của không gian nghiệm (Null space basis).
+           - In ra công thức nghiệm tổng quát.
+        3. Nếu không có biến tự do, hệ có nghiệm duy nhất:
+           - Tính nghiệm bằng phương pháp thế ngược.
+
     Tham số:
     - U: Ma trận tam giác trên vuông kích thước n × n
     - c: Vector vế phải kích thước n
 
-    Khi U[i][i] ≈ 0: in cảnh báo và trả về [] (không dùng raise).
+    Trả về:
+    - Nghiệm duy nhất nếu U khả nghịch
+    - [] nếu U suy biến (vô nghiệm hoặc vô số nghiệm)
+
+    Xử lý ngoại lệ:
+    - Khi U[i][i] xấp xỉ 0: in cảnh báo và trả về [] (không dùng raise).
     """
     if not U:
         return []
 
+    # Kiểm tra kích thước ma trận
     n = len(U)
     if any(len(row) != n for row in U):
         raise ValueError("Matrix U must be square (n x n)")
     if len(c) != n:
         raise ValueError("Vector c must have the same length as U")
 
+    # Khởi tạo nghiệm
     x = [0.0] * n
 
+    # Tìm các biến tự do
     free_vars = [i for i in range(n) if is_zero(U[i][i])]
 
-    # 2. Kiểm tra trường hợp vô nghiệm (dòng toàn 0 nhưng vế phải khác 0)
+    # Kiểm tra trường hợp vô nghiệm (dòng toàn 0 nhưng vế phải khác 0)
     for i in range(n):
         if all(is_zero(U[i][j]) for j in range(n)) and not is_zero(c[i]):
             print("Hệ vô nghiệm (No solution).")
             return []
 
     if free_vars:
-        # HỆ CÓ VÔ SỐ NGHIỆM
+        # Hệ có vô số nghiệm
         # Tìm nghiệm riêng x_0 (bằng cách cho tất cả biến tự do = 0)
         x_0 = [0.0] * n
         for i in range(n - 1, -1, -1):
@@ -65,16 +82,16 @@ def back_substitution(U: list[list[float]], c: list[float]) -> list[float]:
                     v[i] = zero_rectify(s / U[i][i])
             null_basis.append(v)
 
-        # c) In ra công thức nghiệm tổng quát
+        # In ra công thức nghiệm tổng quát
         print("\n[+] Hệ có vô số nghiệm. Công thức nghiệm tổng quát:")
         print(f"    x = {x_0}")
         for i, v in enumerate(null_basis):
             print(f"      + t_{i+1} * {v}")
         print("    (với t_i là các tham số tự do thuộc R)\n")
         
-        return [] # Vẫn trả về rỗng để pass các test case expect_non_unique hiện tại
+        return [] # Vẫn trả về rỗng để pass các test case expect_non_unique
 
-    # 3. TRƯỜNG HỢP NGHIỆM DUY NHẤT (Không có free_vars)
+    # Trường hợp nghiệm duy nhất
     x = [0.0] * n
     for i in range(n - 1, -1, -1):
         s = c[i] - sum(U[i][j] * x[j] for j in range(i + 1, n))
@@ -154,6 +171,7 @@ def test_back_substitution():
             "expect_x": [],
         },
     ]
+
 
     for case in test_cases:
         print(f"  - {case['name']}")

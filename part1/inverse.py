@@ -11,6 +11,23 @@ from config import EPSILON, is_zero, zero_rectify
 def inverse(A: list[list[float]]) -> list[list[float]]:
     """
     Tính ma trận nghịch đảo bằng phương pháp Gauss-Jordan.
+    Phương pháp này sử dụng partial pivoting để tăng tính ổn định của thuật toán.
+    
+    Thuật toán:
+        1. Tạo ma trận bổ sung [A | I]
+        2. Khử Gauss (Biến đổi về ma trận tam giác trên có partial pivoting)
+        3. Khử ngược (Tạo zeros ở nửa trên đường chéo)
+        4. Chuẩn hóa đường chéo về 1 và trích xuất A^-1
+
+    Tham số:
+    - A: Ma trận vuông kích thước n × n
+
+    Trả về:
+    - Ma trận nghịch đảo của A
+
+    Xử lý ngoại lệ:
+    - Khi A không vuông: raise ValueError
+    - Khi A suy biến: raise ValueError
     """
     n = len(A)
     if any(len(row) != n for row in A):
@@ -116,6 +133,11 @@ def test_inverse():
         {
             "name": "Ma trận suy biến do số cực nhỏ (< EPSILON)",
             "input": [[1.0, 2.0], [1.0, 2.0 + 1e-16]],
+            "should_raise": ValueError
+        },
+        {
+            "name": "Ma trận không vuông 2x3 (kiểm tra dimension check)",
+            "input": [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]],
             "should_raise": ValueError
         }
     ]

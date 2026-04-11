@@ -11,10 +11,21 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from config import EPSILON, is_zero, zero_rectify
-
+from config import EPSILON, TestLogger, is_zero, zero_rectify
 
 def _validate_matrix(A: list[list[float]]) -> None:
+    """
+    Kiểm tra tính hợp lệ của ma trận A.
+
+    Tham số:
+        A: Ma trận cần kiểm tra
+
+    Trả về:
+        None
+
+    Xử lý ngoại lệ:
+        ValueError: Nếu ma trận không hợp lệ
+    """
     if not A:
         raise ValueError("Ma trận A không được rỗng")
 
@@ -28,22 +39,72 @@ def _validate_matrix(A: list[list[float]]) -> None:
 
 
 def _identity(n: int) -> list[list[float]]:
+    """
+    Tạo ma trận đơn vị kích thước n x n.
+
+    Tham số:
+        n: Kích thước của ma trận đơn vị
+
+    Trả về:
+        Ma trận đơn vị kích thước n x n
+    """
     return [[1.0 if i == j else 0.0 for j in range(n)] for i in range(n)]
 
 
 def _transpose(A: list[list[float]]) -> list[list[float]]:
+    """
+    Chuyển vị ma trận A.
+
+    Tham số:
+        A: Ma trận cần chuyển vị
+
+    Trả về:
+        Ma trận chuyển vị của A
+    """
     return [list(col) for col in zip(*A)]
 
 
 def _dot(u: list[float], v: list[float]) -> float:
+    """
+    Tính tích vô hướng của hai vector u và v.
+
+    Tham số:
+        u: Vector thứ nhất
+        v: Vector thứ hai
+
+    Trả về:
+        Tích vô hướng của u và v
+    """
     return sum(ui * vi for ui, vi in zip(u, v))
 
 
 def _norm(v: list[float]) -> float:
+    """
+    Tính chuẩn L2 (Euclidean norm) của vector v.
+
+    Tham số:
+        v: Vector cần tính chuẩn
+
+    Trả về:
+        Chuẩn L2 của v
+    """
     return math.sqrt(max(0.0, _dot(v, v)))
 
 
 def _matmul(A: list[list[float]], B: list[list[float]]) -> list[list[float]]:
+    """
+    Nhân hai ma trận A và B.
+
+    Tham số:
+        A: Ma trận thứ nhất
+        B: Ma trận thứ hai
+
+    Trả về:
+        Ma trận tích của A và B
+
+    Xử lý ngoại lệ:
+        ValueError: Nếu kích thước ma trận không tương thích
+    """
     m = len(A)
     p = len(A[0])
     if len(B) != p:
@@ -62,12 +123,35 @@ def _matmul(A: list[list[float]], B: list[list[float]]) -> list[list[float]]:
 
 
 def _matvec(A: list[list[float]], v: list[float]) -> list[float]:
+    """
+    Nhân ma trận A với vector v.
+
+    Tham số:
+        A: Ma trận cần nhân
+        v: Vector cần nhân
+
+    Trả về:
+        Vector kết quả của phép nhân A * v
+
+    Xử lý ngoại lệ:
+        ValueError: Nếu kích thước ma trận và vector không tương thích
+    """
     if len(A[0]) != len(v):
         raise ValueError("Không thể nhân ma trận-véc tơ: kích thước không tương thích")
     return [sum(aij * vj for aij, vj in zip(row, v)) for row in A]
 
 
 def _orthogonalize(v: list[float], basis: list[list[float]]) -> list[float]:
+    """
+    Trực giao hóa vector v với cơ sở basis.
+
+    Tham số:
+        v: Vector cần trực giao hóa
+        basis: Cơ sở các vector đã trực giao hóa
+
+    Trả về:
+        Vector đã được trực giao hóa với cơ sở basis
+    """
     w = [float(x) for x in v]
     for b in basis:
         coeff = _dot(w, b)
@@ -79,6 +163,19 @@ def _orthogonalize(v: list[float], basis: list[list[float]]) -> list[float]:
 
 
 def _find_new_unit_vector(basis: list[list[float]], dim: int) -> list[float]:
+    """
+    Tìm vector đơn vị mới trực giao với cơ sở basis.
+
+    Tham số:
+        basis: Cơ sở các vector đã trực giao hóa
+        dim: Kích thước của vector
+
+    Trả về:
+        Vector đơn vị mới trực giao với cơ sở basis
+
+    Xử lý ngoại lệ:
+        ValueError: Nếu không thể xây dựng cơ sở trực giao
+    """
     for idx in range(dim):
         candidate = [0.0] * dim
         candidate[idx] = 1.0
@@ -96,6 +193,15 @@ def _find_new_unit_vector(basis: list[list[float]], dim: int) -> list[float]:
 
 
 def _rectify_matrix(M: list[list[float]]) -> list[list[float]]:
+    """
+    Chuẩn hóa ma trận M bằng cách loại bỏ các giá trị gần bằng 0.
+
+    Tham số:
+        M: Ma trận cần chuẩn hóa
+
+    Trả về:
+        Ma trận đã được chuẩn hóa
+    """
     rectified: list[list[float]] = []
     for row in M:
         rectified_row: list[float] = []
@@ -109,6 +215,15 @@ def _rectify_matrix(M: list[list[float]]) -> list[list[float]]:
 
 
 def _rectify_vector(v: list[float]) -> list[float]:
+    """
+    Chuẩn hóa vector v bằng cách loại bỏ các giá trị gần bằng 0.
+
+    Tham số:
+        v: Vector cần chuẩn hóa
+
+    Trả về:
+        Vector đã được chuẩn hóa
+    """
     rectified: list[float] = []
     for value in v:
         x = zero_rectify(float(value))
@@ -119,6 +234,18 @@ def _rectify_vector(v: list[float]) -> list[float]:
 
 
 def _jacobi_eigen_symmetric(S: list[list[float]]) -> tuple[list[float], list[list[float]]]:
+    """
+    Tính trị riêng và vector riêng của ma trận đối xứng S bằng phương pháp Jacobi.
+
+    Tham số:
+        S: Ma trận đối xứng cần tính trị riêng và vector riêng
+
+    Trả về:
+        Tuple (eigenvalues, eigenvectors) chứa danh sách trị riêng và ma trận vector riêng
+
+    Xử lý ngoại lệ:
+        ValueError: Nếu ma trận không phải là ma trận vuông
+    """
     n = len(S)
     D = [row[:] for row in S]
     V = _identity(n)
@@ -212,6 +339,9 @@ def decompose_svd(A: list[list[float]]) -> tuple[list[list[float]], list[float],
     """
     Phân rã SVD cho ma trận A.
 
+    Tham số:
+        A: Ma trận cần phân rã SVD
+
     Trả về:
         (U, Sigma, V_T)
         - U là ma trận trực giao trái kích thước m x m
@@ -264,6 +394,17 @@ def decompose_svd(A: list[list[float]]) -> tuple[list[list[float]], list[float],
 
 
 def _sigma_to_matrix(sigma: list[float], m: int, n: int) -> list[list[float]]:
+    """
+    Chuyển đổi danh sách singular values thành ma trận Sigma.
+
+    Tham số:
+        sigma: Danh sách singular values
+        m: Số dòng của ma trận Sigma
+        n: Số cột của ma trận Sigma
+
+    Trả về:
+        Ma trận Sigma
+    """
     S = [[0.0 for _ in range(n)] for _ in range(m)]
     r = min(len(sigma), m, n)
     for i in range(r):
@@ -272,6 +413,19 @@ def _sigma_to_matrix(sigma: list[float], m: int, n: int) -> list[list[float]]:
 
 
 def _max_abs_diff(A: list[list[float]], B: list[list[float]]) -> float:
+    """
+    Tính sai số lớn nhất giữa hai ma trận.
+
+    Tham số:
+        A: Ma trận thứ nhất
+        B: Ma trận thứ hai
+
+    Trả về:
+        Sai số lớn nhất
+
+    Xử lý ngoại lệ:
+        ValueError: Nếu hai ma trận không có cùng kích thước
+    """
     if len(A) != len(B):
         raise ValueError("Hai ma trận phải có cùng số dòng")
     if A and len(A[0]) != len(B[0]):
@@ -287,6 +441,16 @@ def _max_abs_diff(A: list[list[float]], B: list[list[float]]) -> float:
 
 
 def _is_descending_nonnegative(values: list[float], tol: float = 1e-9) -> bool:
+    """
+    Kiểm tra xem danh sách có giảm dần và không âm hay không.
+
+    Tham số:
+        values: Danh sách cần kiểm tra
+        tol: Độ dung sai
+
+    Trả về:
+        True nếu danh sách giảm dần và không âm, False ngược lại
+    """
     for v in values:
         if v < -tol:
             return False
@@ -298,6 +462,16 @@ def _is_descending_nonnegative(values: list[float], tol: float = 1e-9) -> bool:
 
 
 def _is_orthogonal(Q: list[list[float]], tol: float = 1e-7) -> bool:
+    """
+    Kiểm tra xem ma trận có trực giao hay không.
+
+    Tham số:
+        Q: Ma trận cần kiểm tra
+        tol: Độ dung sai
+
+    Trả về:
+        True nếu ma trận trực giao, False ngược lại
+    """
     if not Q:
         return True
 
@@ -378,6 +552,15 @@ def test_decompose_svd() -> None:
             "tol": 1e-10,
         },
         {
+            "name": "Ma trận Hilbert 3x3 (kiểm tra độ ổn định số học)",
+            "input": [
+                [1.0, 1/2, 1/3],
+                [1/2, 1/3, 1/4],
+                [1/3, 1/4, 1/5],
+            ],
+            "tol": 1e-6,
+        },
+        {
             "name": "Dữ liệu rỗng",
             "input": [],
             "should_raise": ValueError,
@@ -394,14 +577,18 @@ def test_decompose_svd() -> None:
         },
     ]
 
+    TestLogger.print_suite_header("Phân Rã Giá Trị Suy Biến (SVD)")
+    
+    passed_count = 0
+    total_count = len(test_cases)
+
     for case in test_cases:
-        print(f"Kiểm thử: {case['name']}")
         try:
             A = case["input"]
             U, sigma, V_T = decompose_svd(A)
 
             if case.get("should_raise") == ValueError:
-                print("=> FAILED: Lẽ ra phải phát sinh ValueError")
+                TestLogger.print_result(case['name'], False, "Lẽ ra phải phát sinh ValueError")
                 continue
 
             m = len(A)
@@ -424,14 +611,22 @@ def test_decompose_svd() -> None:
 
             err = _max_abs_diff(A_reconstructed, A_float)
             tol = case.get("tol", 1e-7)
-            assert err <= tol, f"Sai số tái tạo quá lớn: {err} > {tol}"
+            assert err <= tol, f"Sai số tái tạo quá lớn: {err:.3e} > {tol}"
 
-            print(f"=> PASSED (sai số lớn nhất = {err:.3e})")
+            # Nếu chạy đến đây là thành công
+            TestLogger.print_result(case['name'], True, f"(err = {err:.2e})")
+            passed_count += 1
+
         except ValueError as e:
             if case.get("should_raise") == ValueError:
-                print(f"=> PASSED (Bắt đúng lỗi mong đợi: {e})")
+                TestLogger.print_result(case['name'], True, f"(Bắt đúng lỗi: {e})")
+                passed_count += 1
             else:
-                print(f"=> FAILED: Lỗi ngoài mong đợi: {e}")
+                TestLogger.print_result(case['name'], False, f"(Lỗi ngoài mong đợi: {e})")
+        except AssertionError as e:
+            TestLogger.print_result(case['name'], False, f"(Assertion: {e})")
+
+    TestLogger.print_summary(passed_count, total_count)
 
 if __name__ == "__main__":
     test_decompose_svd()
