@@ -5,10 +5,28 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
-from config import is_zero, zero_rectify
+from config import is_zero, zero_rectify, TestLogger
 
 
-def to_rref(A: list[list[float]]):
+def to_rref(A: list[list[float]], tol: float = None):
+    """
+    Đưa ma trận A về dạng bậc thang rút gọn (RREF) bằng khử Gauss-Jordan.
+
+    Thuật toán:
+        1. Duyệt qua từng cột của ma trận.
+        2. Tìm dòng có phần tử khác 0 lớn nhất (pivot) tại cột hiện tại (partial pivoting).
+        3. Hoán đổi dòng để đưa pivot lên vị trí hiện tại.
+        4. Chuẩn hóa dòng pivot để phần tử chốt bằng 1.
+        5. Khử các phần tử khác 0 trong cột hiện tại (cả trên và dưới dòng pivot).
+        6. Lặp lại cho đến khi toàn bộ ma trận được đưa về RREF.
+
+    Tham số:
+        A: Ma trận đầu vào (m × n)
+
+    Trả về:
+        - rref: Ma trận sau khi đưa về RREF
+        - pivot_cols: Danh sách các chỉ số cột chứa pivot
+    """
     n_rows = len(A)
     n_cols = len(A[0])
     rref = [row[:] for row in A]  # Copy ma trận
@@ -19,12 +37,17 @@ def to_rref(A: list[list[float]]):
         if pivot_row >= n_rows:
             break
 
-        # Tìm dòng chốt
+        # Tìm dòng chốt với partial pivoting
         sel_row = pivot_row
-        while sel_row < n_rows and is_zero(rref[sel_row][j]):
-            sel_row += 1
+        best_val = abs(rref[pivot_row][j])
+        for r in range(pivot_row + 1, n_rows):
+            val = abs(rref[r][j])
+            if val > best_val:
+                best_val = val
+                sel_row = r
 
-        if sel_row == n_rows:
+        is_pivot_zero = (abs(rref[sel_row][j]) <= tol) if tol is not None else is_zero(rref[sel_row][j])
+        if is_pivot_zero:
             continue  # Cột này toàn số 0 ở phía dưới, nhảy sang cột kế
 
         pivot_cols.append(j)
@@ -46,19 +69,41 @@ def to_rref(A: list[list[float]]):
     return rref, pivot_cols
 
 
-def rank_and_basis(A: list[list[float]]):
+def rank_and_basis(A: list[list[float]], tol: float = None):
+    """
+    Tính hạng và tìm cơ sở cho không gian cột, không gian hàng và không gian null của ma trận A.
+
+    Thuật toán:
+        1. Đưa ma trận A về dạng bậc thang rút gọn (RREF) bằng hàm to_rref().
+        2. Hạng (rank) của ma trận bằng số lượng pivot (số cột chứa pivot).
+        3. Cơ sở không gian cột (Column Basis): Các cột tương ứng của ma trận gốc A tại vị trí pivot.
+        4. Cơ sở không gian hàng (Row Basis): Các dòng khác 0 trong ma trận RREF.
+        5. Cơ sở không gian null (Null Basis): Tìm nghiệm của hệ phương trình tuyến tính Ax = 0
+           bằng cách sử dụng ma trận RREF.
+
+    Tham số:
+        A: Ma trận đầu vào (m × n)
+
+    Trả về:
+        - rank: Hạng của ma trận
+        - col_basis: Danh sách các vector cơ sở không gian cột
+        - row_basis: Danh sách các vector cơ sở không gian hàng
+        - null_basis: Danh sách các vector cơ sở không gian null
+
+    Xử lý ngoại lệ:
+        - Nếu A là ma trận rỗng, trả về 0, [], [], []
+    """
     if not A or not A[0]:
         return 0, [], [], []
 
     n_rows = len(A)
     n_cols = len(A[0])
-    rref, pivot_cols = to_rref(A)
+    rref, pivot_cols = to_rref(A, tol)
 
     # 1. Rank
     rank = len(pivot_cols)
 
-    # 2. Row Basis (Các dòng khác 0 trong RREF)
-    row_basis = [row for row in rref if any(not is_zero(x) for x in row)]
+    row_basis = [row for row in rref if any(not ((abs(x) <= tol) if tol is not None else is_zero(x)) for x in row)]
 
     # 3. Column Basis (Cột tại vị trí pivot lấy từ ma trận gốc A)
     # Trả về dạng danh sách các vector cột
@@ -95,73 +140,32 @@ def compare_matrices(M1, M2):
     return True
 
 
-def test_rank_and_basis():
-    test_cases = [
-        {
-            "name": "Ma trận đơn vị 3x3 (Full Rank)",
-            "input": [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-            "exp_rank": 3,
-            "null_is_empty": True
-        },
-        {
-            "name": "Ma trận không 2x3",
-            "input": [[0, 0, 0], [0, 0, 0]],
-            "exp_rank": 0,
-            "exp_null_dim": 3
-        },
-        {
-            "name": "Ma trận có dòng phụ thuộc tuyến tính (R3 = R1 + R2)",
-            "input": [[1, 2, 1], [0, 1, 1], [1, 3, 2]],
-            "exp_rank": 2,
-            "exp_null_dim": 1
-        },
-        {
-            "name": "Ma trận 1 dòng nhiều cột",
-            "input": [[1, 2, 3, 4]],
-            "exp_rank": 1,
-            "exp_null_dim": 3
-        },
-        {
-            "name": "Ma trận có cột toàn số 0 ở giữa",
-            "input": [[1, 0, 2], [3, 0, 4]],
-            "exp_rank": 2,
-            "exp_null_dim": 1
-        },
-        {
-            "name": "Ma trận vuông suy biến",
-            "input": [[1, 1], [1, 1]],
-            "exp_rank": 1,
-            "exp_null_dim": 1
-        },
-        {
-            "name": "Ma trận số thực cực nhỏ (< EPSILON)",
-            "input": [[1, 2], [0, 1e-16]],
-            "exp_rank": 1,
-            "exp_null_dim": 1
-        },
-        {
-            "name": "Ma trận kích thước 1x1",
-            "input": [[5.0]],
-            "exp_rank": 1,
-            "exp_null_dim": 0
-        }
-    ]
+def test_rank_and_basis(test_cases: list[dict]):
+    TestLogger.print_suite_header("TÌM HẠNG VÀ CƠ SỞ (RANK & BASIS)")
+    
+    passed_count = 0
+    total_count = len(test_cases)
 
     for case in test_cases:
-        print(f"  - {case['name']}")
-        rank, col_b, row_b, null_b = rank_and_basis(case['input'])
+        try:
+            rank, col_b, row_b, null_b = rank_and_basis(case['input'])
 
-        # Kiểm tra Hạng
-        assert rank == case['exp_rank'], f"Sai Rank: kỳ vọng {case['exp_rank']}, thực tế {rank}"
+            # Kiểm tra Hạng
+            assert rank == case['exp_rank'], f"Sai Rank: kỳ vọng {case['exp_rank']}, thực tế {rank}"
 
-        # Kiểm tra số lượng vector cơ sở
-        assert len(col_b) == rank, "Số lượng Column Basis phải bằng Rank"
-        assert len(row_b) == rank, "Số lượng Row Basis phải bằng Rank"
+            # Kiểm tra số lượng vector cơ sở
+            assert len(col_b) == rank, "Số lượng Column Basis phải bằng Rank"
+            assert len(row_b) == rank, "Số lượng Row Basis phải bằng Rank"
 
-        if case.get("exp_null_dim") is not None:
-            assert len(null_b) == case['exp_null_dim'], f"Sai Null Basis dim: kỳ vọng {case['exp_null_dim']}"
+            if case.get("exp_null_dim") is not None:
+                assert len(null_b) == case['exp_null_dim'], f"Sai Null Basis dim: kỳ vọng {case['exp_null_dim']}"
 
-        print("    => PASSED")
+            TestLogger.print_result(case['name'], True)
+            passed_count += 1
+        except AssertionError as e:
+            TestLogger.print_result(case['name'], False, f"(Assertion: {e})")
+
+    TestLogger.print_summary(passed_count, total_count)
 
 if __name__ == "__main__":
-    test_rank_and_basis()
+    test_rank_and_basis(RANK_BASIS_TEST_CASES)

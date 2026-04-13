@@ -3,11 +3,17 @@
 ## Render video
 
 ```bash
-# Chất lượng thấp (preview nhanh)
-manim -pql manim_scene.py Scene1_AnatomyOfChaos
-
-# Chất lượng cao (1080p)
+# Render video
 manim -pqh manim_scene.py Scene1_AnatomyOfChaos
+
+# Render video
+manim -pqh manim_scene.py Scene2_GeometricInterpretation
+
+# Render video
+manim -pqh manim_scene.py Scene3_SingularValues
+
+# Render video
+manim -pqh manim_scene.py Scene4_Applications
 ```
 
 ## Flags 

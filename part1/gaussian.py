@@ -16,46 +16,64 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from config import is_zero, zero_rectify
+from config import is_zero, zero_rectify, TestLogger
 from back_substitution import back_substitution
+from test_cases import GAUSSIAN_ELIMINATE_TEST_CASES
+from utils import is_upper_triangular
 
 
 def gaussian_eliminate(A: list[list[float]], b: list[float]):
     """
-    Đưa [A | b] về dạng bậc thang dòng (REF) bằng khử Gauss có chọn phần tử chốt cột.
+    Giải hệ phương trình tuyến tính Ax = b bằng phương pháp khử Gauss.
 
-    A có kích thước m × n (m hàng, n cột). len(b) phải bằng m.
+    Thuật toán:
+        1. Đưa [A | b] về dạng bậc thang dòng (REF) bằng khử Gauss có chọn phần tử chốt cột.
+        2. A có kích thước m × n (m hàng, n cột). len(b) phải bằng m.
+        3. Khi không tìm được pivot tại một cột (các phần tử dưới đều xấp xỉ 0): in
+           "Không có pivot tại cột k" và bỏ qua cột đó (không raise).
+        4. Nếu sau đó gọi "back_substitution" trên tam giác thu được mà gặp đường chéo ~0,
+           hàm đó sẽ in "Hệ không có nghiệm duy nhất" và trả về "[]".
 
-    Khi không tìm được pivot tại một cột (các phần tử dưới đều ~0): in
-    ``Không có pivot tại cột k`` và bỏ qua cột đó (không raise).
+    Tham số:
+        A: Ma trận hệ số (m × n)
+        b: Vector vế phải (m,)
 
-    Nếu sau đó gọi ``back_substitution`` trên tam giác thu được mà gặp đường chéo ~0,
-    hàm đó sẽ in ``Hệ không có nghiệm duy nhất`` và trả về ``[]``.
-
-    Returns:
+    Trả về:
         U: ma trận hệ số sau biến đổi (m × n), dạng bậc thang dòng
         x: vector nghiệm (độ dài n), trả về [] nếu vô số nghiệm hoặc vô nghiệm
         swap_count: số lần hoán đổi dòng
+
+    Xử lý ngoại lệ:
+        - Khi A rỗng: raise ValueError
+        - Khi A không vuông: raise ValueError
+        - Khi len(b) != m: raise ValueError
     """
+
+    # Kiểm tra ma trận
     if not A:
         raise ValueError("Ma trận A rỗng")
 
+    # Kiểm tra kích thước ma trận
     m = len(A)
     n = len(A[0])
     if any(len(row) != n for row in A):
         raise ValueError("Mọi hàng của A phải cùng số cột")
 
+    # Kiểm tra vector b
     if len(b) != m:
         raise ValueError("Vector b phải có độ dài bằng số hàng của A")
 
+    # Tạo ma trận mở rộng
     M = [list(A[i]) + [float(b[i])] for i in range(m)]
     swap_count = 0
     pivot_row = 0
 
+    # Vòng lặp chính
     for j in range(n):
         if pivot_row >= m:
             break
 
+        # Tìm phần tử chốt
         p = pivot_row
         best = abs(M[pivot_row][j])
         for i in range(pivot_row + 1, m):
@@ -63,13 +81,16 @@ def gaussian_eliminate(A: list[list[float]], b: list[float]):
             if v > best:
                 best = v
                 p = i
-
+        
+        # Kiểm tra pivot
         pivot = M[p][j]
 
+        # Nếu pivot bằng 0, bỏ qua cột
         if is_zero(pivot):
             print(f"Không có pivot tại cột {j + 1}")
             continue
 
+        # Kiểm tra pivot nhỏ
         if abs(pivot) < 1e-8:
             warnings.warn(
                 "Pivot is very small; the system may be ill-conditioned.",
@@ -103,16 +124,9 @@ def gaussian_eliminate(A: list[list[float]], b: list[float]):
     return U, x, swap_count
 
 
-def _is_upper_triangular(U: list[list[float]], tol: float = 1e-9) -> bool:
-    n = len(U)
-    for i in range(1, min(n, len(U[0]))):
-        for j in range(i):
-            if abs(U[i][j]) > tol:
-                return False
-    return True
 
 
-def test_gaussian_eliminate():
+def test_gaussian_eliminate(test_cases: list[dict]):
     import os
     import sys
     import warnings
@@ -125,90 +139,34 @@ def test_gaussian_eliminate():
 
     warnings.simplefilter("ignore", UserWarning)
 
-    test_cases = [
-        {
-            "name": "Don vi 2x2",
-            "A": [[1.0, 0.0], [0.0, 1.0]],
-            "b": [3.0, -1.0],
-            "expect_swaps": 0,
-        },
-        {
-            "name": "He 2x2 (partial pivot doi dong 1 lan)",
-            "A": [[1.0, 2.0], [3.0, 4.0]],
-            "b": [0.0, -2.0],
-            "expect_x": [-2.0, 1.0],
-            "expect_swaps": 1,
-        },
-        {
-            "name": "Hoan vi [[0,1],[1,0]]",
-            "A": [[0.0, 1.0], [1.0, 0.0]],
-            "b": [2.0, 1.0],
-            "expect_x": [1.0, 2.0],
-            "expect_swaps": 1,
-        },
-        {
-            "name": "3x3 cung ma tran test inverse",
-            "A": [[1.0, 0.0, 5.0], [2.0, 1.0, 6.0], [3.0, 4.0, 0.0]],
-            "b": [6.0, 10.0, 11.0],
-            "expect_x": [1.0, 2.0, 1.0],
-        },
-        {
-            "name": "4x4 cheo troi (nghiem don gian)",
-            "A": [
-                [4.0, 1.0, 0.0, 0.0],
-                [1.0, 4.0, 1.0, 0.0],
-                [0.0, 1.0, 4.0, 1.0],
-                [0.0, 0.0, 1.0, 4.0],
-            ],
-            "b": [5.0, 6.0, 6.0, 5.0],
-            "expect_x": [1.0, 1.0, 1.0, 1.0],
-        },
-        {
-            "name": "Cot dau tien gan 0 — can chon chot xa hon",
-            "A": [[1e-12, 1.0], [1.0, 1.0]],
-            "b": [3.0, 3.0],
-        },
-        {
-            "name": "Suy bien [[1,2],[2,4]] + b nhat quan",
-            "A": [[1.0, 2.0], [2.0, 4.0]],
-            "b": [1.0, 2.0],
-            "expect_non_unique": True,
-        },
-        {
-            "name": "He 2x3 (nhieu an hon phuong trinh — co the vo so nghiem)",
-            "A": [[1.0, 1.0, 1.0], [1.0, 1.0, 1.0]],
-            "b": [3.0, 3.0],
-            "skip_backsub": True,
-        },
-        {
-            "name": "b sai kich thuoc",
-            "A": [[1.0, 0.0], [0.0, 1.0]],
-            "b": [1.0],
-            "should_raise": ValueError,
-        },
-    ]
+    TestLogger.print_suite_header("Khử Gauss (Gaussian eliminate)")
+    
+    passed_count = 0
+    total_count = len(test_cases)
 
     for case in test_cases:
-        print(f"  - {case['name']}")
         try:
             U, x, swaps = gaussian_eliminate(case["A"], case["b"])
             
             if case.get("should_raise"):
-                assert False, "expected ValueError"
+                TestLogger.print_result(case['name'], False, "Lẽ ra phải phát sinh ValueError")
+                continue
                 
             if not case.get("skip_backsub"):
-                assert _is_upper_triangular(U), "U phai tam giac tren (he vuong day du hang)"
+                assert is_upper_triangular(U), "U phai tam giac tren (he vuong day du hang)"
                 
             if "expect_swaps" in case:
                 assert swaps == case["expect_swaps"], f"swap_count={swaps}"
                 
             if case.get("skip_backsub"):
-                print("    => PASSED")
+                TestLogger.print_result(case['name'], True)
+                passed_count += 1
                 continue
                 
             if case.get("expect_non_unique"):
                 assert x == [], "Expected empty solution for non-unique system"
-                print("    => PASSED")
+                TestLogger.print_result(case['name'], True)
+                passed_count += 1
                 continue
                 
             if "expect_x" in case:
@@ -217,14 +175,19 @@ def test_gaussian_eliminate():
                     
             e = verify_solution(case["A"], x, case["b"])
             assert e < 1e-8, f"||b-Ax||={e}"
-            print(f"    => PASSED (e = {e:.2e})")
+            TestLogger.print_result(case['name'], True, f"(e = {e:.2e})")
+            passed_count += 1
             
         except ValueError as err:
             if case.get("should_raise") == ValueError:
-                print(f"    => PASSED (Caught expected error: {err})")
+                TestLogger.print_result(case['name'], True, f"(Bắt đúng lỗi: {err})")
+                passed_count += 1
             else:
-                print(f"    => FAILED: Unexpected error {err}")
-                raise
+                TestLogger.print_result(case['name'], False, f"(Lỗi ngoài mong đợi: {err})")
+        except AssertionError as err:
+            TestLogger.print_result(case['name'], False, f"(Assertion: {err})")
+            
+    TestLogger.print_summary(passed_count, total_count)
 
 if __name__ == "__main__":
-    test_gaussian_eliminate()
+    test_gaussian_eliminate(GAUSSIAN_ELIMINATE_TEST_CASES)
