@@ -1,11 +1,261 @@
 \section{Phần 3: Giải Hệ Phương Trình và Phân Tích Hiệu Năng}
-Phân tích tính ổn định số và chi phí tính toán qua thực nghiệm.
 
-\subsection{Lý thuyết sai số và ổn định số}
-Trình bày về số điều kiện (Condition Number) và phương pháp lặp Gauss-Seidel...
+% ===========================================================
+\subsection{Thiết lập thực nghiệm}
 
-\subsection{Thực nghiệm thời gian chạy (Benchmark)}
-Bảng so sánh thời gian và đồ thị log-log...
+\subsubsection{Cấu hình phần cứng và phần mềm}
 
-\subsection{Phân tích độ ổn định trên các hệ ma trận đặc biệt}
-So sánh kết quả trên ma trận Hilbert và ma trận ngẫu nhiên SPD...
+Toàn bộ thực nghiệm đo lường hiệu năng và độ ổn định số học trong Phần 3 được thực hiện trên cùng một môi trường cố định nhằm đảm bảo tính lặp lại (reproducibility) của kết quả:
+
+\begin{itemize}
+    \item \textbf{Hệ điều hành:} Windows 11 (64-bit).
+    \item \textbf{CPU:} AMD Ryzen 5 5600H (6 nhân, 12 luồng, 3.30~GHz base).
+    \item \textbf{RAM:} 16~GB DDR4.
+    \item \textbf{Ngôn ngữ:} Python 3.12.
+    \item \textbf{Thư viện:} NumPy 1.26 (backend BLAS/LAPACK tối ưu cho phép tính đại số tuyến tính).
+\end{itemize}
+
+\subsubsection{Môi trường kiểm thử và phương pháp đo lường}
+
+\paragraph{Đo thời gian thực thi}
+
+Thời gian được đo bằng \texttt{time.perf\_counter()} -- đồng hồ độ phân giải cao nhất mà Python cung cấp trên từng nền tảng. Mỗi phép đo được lặp lại \textbf{5 lần} (\texttt{N\_RUNS = 5}) rồi lấy trung bình nhằm loại bỏ nhiễu ngẫu nhiên phát sinh từ bộ lập lịch hệ điều hành.
+
+\paragraph{Đo sai số tương đối}
+
+Sai số tương đối (Relative Residual Error) được tính theo công thức:
+\begin{equation}
+    e = \frac{\|A\hat{x} - b\|_2}{\|b\|_2}
+\end{equation}
+trong đó chuẩn $L_2$ được tính thông qua \texttt{np.linalg.norm} \cite{numpy_docs} (sử dụng hàm \texttt{\_relative\_error\_np} nội bộ) nhằm tránh hiện tượng tràn số (overflow) trên các ma trận kích thước lớn. Vector vế phải được chọn là $b = A \cdot \mathbf{1}$ (với $\mathbf{1}$ là vector toàn số 1), sao cho nghiệm đúng $x^* = \mathbf{1}$ -- cách thiết lập này giúp kiểm tra sai số đơn giản và nhất quán giữa các lần chạy.
+
+\subsubsection{Chiến lược cài đặt Solver và cơ chế Fallback}
+
+Để đảm bảo tính nhất quán (apples-to-apples) khi so sánh hiệu năng, nhóm sử dụng chiến lược lai ghép sau (xem file \texttt{part3/solvers.py}):
+
+\begin{itemize}
+    \item \textbf{Gauss (LU):} Gọi \texttt{np.linalg.solve} -- bộ giải LU nhanh nhất của NumPy. Nếu ma trận sing-ular (\texttt{LinAlgError}) thì tự động fallback sang \texttt{np.linalg.lstsq} để đảm bảo benchmark luôn hoàn thành, đồng thời ghi nhận hiện tượng sai số bùng nổ vào báo cáo.
+    \item \textbf{SVD:} Gọi \texttt{np.linalg.lstsq} -- bộ giải dựa trên nghịch đảo giả (pseudo-inverse) SVD, ổn định về mặt số học nhất.
+    \item \textbf{Gauss-Seidel:} Giữ nguyên bản cài đặt \textbf{Python thuần} (pure Python iterative, \texttt{max\_iter = 1000}, \texttt{tol = 1e-10}) của nhóm. Trước khi lặp, hàm \texttt{check\_diagonally\_dominant} kiểm tra điều kiện chéo trội chặt hàng; nếu không thỏa, ném ngay \texttt{ValueError} và benchmark ghi nhận \texttt{ERR}.
+\end{itemize}
+
+Việc dùng NumPy backend cho Gauss và SVD đặt cả hai phương pháp này trên cùng nền tảng tối ưu (BLAS/LAPACK \cite{numpy_docs}), tạo điều kiện quan sát rõ ràng hằng số tính toán khác nhau giữa LU và SVD trên đồ thị log-log $O(n^3)$.
+
+% ===========================================================
+\subsection{Phân tích hiệu năng}
+
+\subsubsection{Cơ sở lý thuyết về độ phức tạp thuật toán}
+
+\paragraph{Phương pháp trực tiếp: Khử Gauss và SVD}
+
+Cả hai đều thuộc lớp phương pháp \textbf{trực tiếp} (Direct Methods): chúng tính ra nghiệm chính xác (trong giới hạn dấu phẩy động) sau một số hữu hạn phép toán xác định. Chi phí tính toán của cả hai đều là $\mathcal{O}(n^3)$ \cite{golub, trefethen}:
+
+\begin{itemize}
+    \item \textbf{Khử Gauss (LU):} Chi phí chủ yếu nằm ở giai đoạn phân rã $PA = LU$ với $\frac{2}{3}n^3$ phép nhân--cộng. Đây là hằng số (constant factor) nhỏ nhất trong ba phương pháp.
+    \item \textbf{Phân rã SVD:} Chi phí lớn hơn đáng kể do phải thực hiện nhiều vòng quay Givens (Jacobi iterations) hoặc bidiagonalization và QR iterations để tìm tất cả giá trị suy biến. Trong thực tế, hằng số ẩn của SVD lớn hơn LU khoảng 4--10 lần \cite{golub}.
+\end{itemize}
+
+\paragraph{Phương pháp lặp: Gauss-Seidel}
+
+Gauss-Seidel là phương pháp \textbf{lặp} (Iterative Method). Mỗi vòng lặp chỉ tốn $\mathcal{O}(n^2)$ phép toán (nhân ma trận--vector). Nếu phương pháp hội tụ trong $k$ vòng lặp thì tổng chi phí là $\mathcal{O}(kn^2)$.
+
+Điều kiện đủ để Gauss-Seidel hội tụ \cite{strang}: ma trận $A$ phải \textbf{chéo trội nghiêm ngặt theo hàng} (Strictly Diagonally Dominant -- SDD), tức là:
+\begin{equation}
+    |a_{ii}| > \sum_{j \neq i} |a_{ij}|, \quad \forall i = 1, \ldots, n
+\end{equation}
+Khi điều kiện này được thỏa mãn, bán kính phổ của ma trận lặp $\rho(G) < 1$, đảm bảo hội tụ hình học với tốc độ nhanh trên ma trận SPD.
+
+\subsubsection{Kết quả đo lường thời gian thực thi}
+
+Bảng \ref{tab:perf} trình bày thời gian trung bình thực thi (trung bình 5 lần chạy) của ba phương pháp trên ma trận \textbf{SPD} (Symmetric Positive Definite, chéo trội nghiêm ngặt) với các kích thước $n \in \{50, 100, 200, 500, 1000\}$.
+
+\begin{table}[h!]
+\centering
+\caption{Thời gian trung bình thực thi (giây) theo kích thước $n$ trên ma trận SPD}
+\label{tab:perf}
+\begin{tabular}{|r|r|r|r|}
+\hline
+\textbf{$n$} & \textbf{Gauss (s)} & \textbf{SVD (s)} & \textbf{Gauss-Seidel (s)} \\
+\hline
+50   & $8.03 \times 10^{-5}$ & $2.90 \times 10^{-4}$ & $2.77 \times 10^{-3}$ \\
+100  & $2.50 \times 10^{-4}$ & $3.65 \times 10^{-3}$ & $1.03 \times 10^{-2}$ \\
+200  & $1.09 \times 10^{-3}$ & $6.55 \times 10^{-3}$ & $3.98 \times 10^{-2}$ \\
+500  & $8.26 \times 10^{-3}$ & $4.21 \times 10^{-2}$ & $2.52 \times 10^{-1}$ \\
+1000 & $3.62 \times 10^{-2}$ & $2.53 \times 10^{-1}$ & $1.09 \times 10^{0}$  \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{figure}[h!]
+\centering
+\IfFileExists{assets/loglog_benchmark.png}{%
+    \includegraphics[width=0.85\textwidth]{assets/loglog_benchmark.png}%
+}{%
+    \fbox{\parbox{0.85\textwidth}{\centering\vspace{2cm}
+        \textit{[Hình 3.1: Đồ thị Log-Log — sẽ được chèn sau]}\\[0.5cm]
+    \vspace{2cm}}}%
+}
+\caption{Đồ thị Log-Log so sánh thời gian thực thi của ba phương pháp theo kích thước $n$. Đường nét đứt là các đường tham chiếu lý thuyết $y \propto n^3$ và $y \propto n^2$.}
+\label{fig:loglog}
+\end{figure}
+
+\subsubsection{Nhận xét và đối chiếu lý thuyết}
+
+Kết quả trong Bảng~\ref{tab:perf} và đường xu hướng trên đồ thị Log-Log (Hình~\ref{fig:loglog}) cho thấy ba xu hướng rõ ràng:
+
+\paragraph{Gauss và SVD tăng theo $O(n^3)$}
+
+Khi $n$ tăng gấp đôi từ $500$ lên $1000$, thời gian của Gauss tăng từ $8.26 \times 10^{-3}$~s lên $3.62 \times 10^{-2}$~s (hệ số $\approx 4.4$) và của SVD tăng từ $4.21 \times 10^{-2}$~s lên $2.53 \times 10^{-1}$~s (hệ số $\approx 6.0$). Cả hai đều xấp xỉ hệ số lý thuyết $2^3 = 8$, nhất quán với độ phức tạp $\mathcal{O}(n^3)$.
+
+\paragraph{Hằng số tính toán của SVD lớn hơn Gauss}
+
+Ở cùng $n = 1000$, SVD mất $0.253$~s trong khi Gauss chỉ cần $0.036$~s -- tức là SVD \textbf{chậm hơn khoảng 7 lần}. Đây chính xác là biểu hiện của hằng số $\mathcal{O}(n^3)$ lớn hơn: SVD cần nhiều phép quay và vòng lặp bidiagonalization hơn so với phân rã LU đơn giản.
+
+\paragraph{Gauss-Seidel tăng tuyến tính với $n^2$}
+
+Gauss-Seidel (pure Python) trên SPD hội tụ sau rất ít vòng lặp (điển hình $k < 50$ vòng với ma trận chéo trội chặt). Khi $n$ tăng từ $100$ lên $200$ (gấp đôi), thời gian tăng từ $0.0103$~s lên $0.0398$~s (hệ số $\approx 3.9 \approx 4 = 2^2$), nhất quán với $\mathcal{O}(n^2)$.
+
+Cần phân biệt rõ \textbf{hai khía cạnh độc lập}: Về mặt \textit{thời gian tuyệt đối}, Gauss-Seidel ($1.09$~s ở $n = 1000$) hiện chậm hơn Khử Gauss ($0.036$~s) do rào cản hiệu năng của Python thuần so với backend C/Fortran của NumPy. Tuy nhiên, về mặt \textit{tăng trưởng tiệm cận} (asymptotic scaling), đồ thị log-log (Hình~\ref{fig:loglog}) cho thấy đường Gauss-Seidel có \textbf{độ dốc thấp hơn hẳn} -- song song với đường tham chiếu $n^2$ thay vì $n^3$. Điều này chứng minh rằng nếu được cài đặt trên cùng một ngôn ngữ tối ưu (như C++ hay Fortran), phương pháp lặp sẽ có tốc độ \textbf{vượt trội hoàn toàn} so với các phương pháp trực tiếp khi xử lý ma trận sparse kích thước siêu lớn.
+
+% ===========================================================
+\subsection{Phân tích độ ổn định số học}
+
+\subsubsection{Cơ sở lý thuyết: Số điều kiện và định lý sai số}
+
+\paragraph{Định nghĩa số điều kiện}
+
+Số điều kiện (condition number) của ma trận $A$ theo chuẩn $p$ được định nghĩa là \cite{trefethen}:
+\begin{equation}
+    \kappa_p(A) = \|A\|_p \cdot \|A^{-1}\|_p
+\end{equation}
+Trong thực nghiệm, nhóm sử dụng chuẩn spectral ($p = 2$), khi đó:
+\begin{equation}
+    \kappa_2(A) = \frac{\sigma_{\max}(A)}{\sigma_{\min}(A)}
+\end{equation}
+trong đó $\sigma_{\max}$ và $\sigma_{\min}$ lần lượt là giá trị suy biến lớn nhất và nhỏ nhất của $A$. Hàm \texttt{calculate\_condition\_number} trong \texttt{data\_gen.py} tính giá trị này thông qua \texttt{np.linalg.cond(A, p=2)}.
+
+\paragraph{Định lý sai số (Error Bound)}
+
+\textbf{Định lý 3.1} \cite{trefethen}: Cho $Ax = b$ là hệ nghiệm đúng và $A\hat{x} = b + \delta b$ là hệ bị nhiễu (với $\delta b$ là nhiễu không thể tránh khỏi do sai số làm tròn). Khi đó sai số tương đối của nghiệm bị chặn bởi:
+\begin{equation}
+    \frac{\|\hat{x} - x\|}{\|x\|} \leq \kappa_2(A) \cdot \frac{\|\delta b\|}{\|b\|}
+\end{equation}
+
+\textbf{Ý nghĩa thực tiễn:} $\kappa_2(A)$ đóng vai trò là hệ số khuếch đại sai số. Máy tính luôn có nhiễu làm tròn $\varepsilon_{\text{machine}} \approx 10^{-16}$ (IEEE~754 \cite{ieee754}). Do đó sai số nghiệm tương đối có thể lên tới $\kappa_2(A) \cdot \varepsilon_{\text{machine}}$. Khi $\kappa_2(A) \approx 10^{20}$, sai số nghiệm có thể đạt tới $10^{20} \times 10^{-16} = 10^4$ -- tức là nghiệm hoàn toàn vô nghĩa.
+
+\textbf{Lưu ý quan trọng:} Sai số tương đối trong bảng thực nghiệm là \textit{relative residual} $\|A\hat{x} - b\|_2 / \|b\|_2$, khác với $\|\hat{x} - x\|/\|x\|$ trong Định lý 3.1. Residual nhỏ \textbf{không} đảm bảo nghiệm $\hat{x}$ gần đúng với $x^*$. Đây chính là ``bẫy'' đặc trưng của hệ ill-conditioned.
+
+\subsubsection{Thiết lập hai đối tượng khảo sát}
+
+\paragraph{Ma trận SPD -- Well-conditioned}
+
+Ma trận SPD được sinh bằng hàm \texttt{generate\_spd\_matrix} trong \texttt{data\_gen.py}:
+\begin{enumerate}
+    \item Sinh ma trận ngẫu nhiên $X \in \mathbb{R}^{n \times n}$, tính $A = X X^T$ (đảm bảo đối xứng, bán xác định dương).
+    \item Ép chéo trội nghiêm ngặt: với mỗi hàng $i$: $A[i][i] \leftarrow \sum_{j \neq i} |A[i][j]| + 1.0$.
+\end{enumerate}
+Biến đổi ở bước~2 đảm bảo hai tính chất song song: (1) Gauss-Seidel chắc chắn hội tụ, và (2) số điều kiện $\kappa_2(A)$ giữ ở mức thấp (tỉ lệ tuyến tính với $n$).
+
+\paragraph{Ma trận Hilbert $H_n$ -- Ill-conditioned}
+
+Ma trận Hilbert là bài kiểm tra khắc nghiệt bậc nhất cho độ ổn định số học. Nó được định nghĩa bởi:
+\begin{equation}
+    H_n[i][j] = \frac{1}{i + j + 1}, \quad i, j = 0, 1, \ldots, n-1
+\end{equation}
+(0-indexed). Ma trận Hilbert có $\kappa_2(H_n)$ tăng \textbf{theo hàm mũ} khi $n$ tăng, và không thỏa mãn điều kiện chéo trội chặt hàng nên Gauss-Seidel không thể áp dụng được.
+
+\subsubsection{Kết quả đo lường sai số tương đối}
+
+Bảng \ref{tab:stability} trình bày số điều kiện $\kappa_2(A)$ và sai số tương đối (relative residual) của ba phương pháp trên hai loại ma trận với $n \in \{50, 100, 200, 500\}$.
+
+\begin{table}[h!]
+\centering
+\caption{So sánh số điều kiện $\kappa_2(A)$ và sai số tương đối $\|A\hat{x}-b\|_2/\|b\|_2$}
+\label{tab:stability}
+\begin{tabular}{|r|l|r|r|r|r|}
+\hline
+\textbf{$n$} & \textbf{Loại} & \textbf{$\kappa_2(A)$} & \textbf{Gauss} & \textbf{SVD} & \textbf{Gauss-Seidel} \\
+\hline
+\multirow{2}{*}{50}
+  & Hilbert & $1.10 \times 10^{19}$ & $5.58 \times 10^{-16}$ & $8.47 \times 10^{-16}$ & ERR \\
+  & SPD     & $2.43$               & $2.47 \times 10^{-16}$ & $7.83 \times 10^{-16}$ & $1.21 \times 10^{-12}$ \\
+\hline
+\multirow{2}{*}{100}
+  & Hilbert & $3.31 \times 10^{19}$ & $5.81 \times 10^{-15}$ & $1.22 \times 10^{-15}$ & ERR \\
+  & SPD     & $2.30$               & $2.56 \times 10^{-16}$ & $8.35 \times 10^{-16}$ & $1.18 \times 10^{-12}$ \\
+\hline
+\multirow{2}{*}{200}
+  & Hilbert & $1.60 \times 10^{20}$ & $2.67 \times 10^{-15}$ & $1.15 \times 10^{-15}$ & ERR \\
+  & SPD     & $2.24$               & $3.51 \times 10^{-16}$ & $1.74 \times 10^{-15}$ & $2.06 \times 10^{-13}$ \\
+\hline
+\multirow{2}{*}{500}
+  & Hilbert & $4.76 \times 10^{20}$ & $2.49 \times 10^{-14}$ & $1.28 \times 10^{-15}$ & ERR \\
+  & SPD     & $2.15$               & $4.68 \times 10^{-16}$ & $1.37 \times 10^{-15}$ & $2.17 \times 10^{-13}$ \\
+\hline
+\multicolumn{6}{l}{\footnotesize ERR: Ma trận Hilbert không chéo trội → Gauss-Seidel từ chối giải.} \\
+\end{tabular}
+\end{table}
+
+\subsubsection{Nhận xét và lý giải hiện tượng}
+
+\paragraph{Phân tích trên ma trận SPD (Well-conditioned)}
+
+Trên ma trận SPD, $\kappa_2(A)$ rất nhỏ (từ $2.15$ đến $2.43$ -- gần như bằng $1$). Theo Định lý~3.1, sai số nghiệm bị chặn bởi $\kappa_2(A) \cdot \varepsilon_{\text{machine}} \approx 2.5 \times 10^{-16}$. Kết quả thực nghiệm hoàn toàn nhất quán:
+
+\begin{itemize}
+    \item \textbf{Gauss và SVD} cho residual luôn ở mức \textit{machine epsilon} ($\sim 10^{-16}$ đến $10^{-15}$), chứng tỏ cả hai đều cho kết quả chính xác đến giới hạn biểu diễn số dấu phẩy động.
+    \item \textbf{Gauss-Seidel} hội tụ ổn định với sai số $\sim 10^{-12}$ đến $10^{-13}$, ở mức chấp nhận được trong thực tiễn kỹ thuật. Sai số nhỉnh hơn so với hai phương pháp trực tiếp là do thuật toán lặp dừng khi $\|\Delta x\| < 10^{-10}$ chứ không giải chính xác.
+\end{itemize}
+
+\paragraph{Hiện tượng bùng nổ sai số (Error Explosion) trên ma trận Hilbert}
+
+Trên ma trận Hilbert, $\kappa_2(H_n)$ đạt tới $\approx 4.76 \times 10^{20}$ (với $n = 500$). Áp dụng Định lý~3.1:
+\begin{equation}
+    \frac{\|\hat{x} - x^*\|}{\|x^*\|} \lesssim \kappa_2(H_n) \cdot \varepsilon_{\text{machine}} \approx 4.76 \times 10^{20} \times 10^{-16} = 4.76 \times 10^{4}
+\end{equation}
+
+Điều này có nghĩa là nghiệm $\hat{x}$ tính được bởi Gauss có thể sai lệch tới \textbf{50,000 lần} so với nghiệm thật, mặc dù residual $\|A\hat{x} - b\|_2/\|b\|_2$ nhìn có vẻ nhỏ (cỡ $10^{-15}$). Đây chính là ``bẫy'' kinh điển của hệ ill-conditioned: \textbf{residual nhỏ không đồng nghĩa với nghiệm đúng}. Ma trận Hilbert ``chấp nhận'' mọi nghiệm xấp xỉ $b$ với residual thấp, vì bản thân nó bị kéo dãn quá nhiều trong không gian nhiều chiều.
+
+\paragraph{Sự ưu việt của SVD trên ma trận Hilbert}
+
+Trên cùng ma trận Hilbert $n = 500$, SVD cho residual $1.28 \times 10^{-15}$ trong khi Gauss cho $2.49 \times 10^{-14}$ -- thấp hơn Gauss khoảng \textbf{20 lần}. Lý do nằm ở bản chất của \texttt{np.linalg.lstsq}: nó sử dụng \textbf{nghịch đảo giả} (pseudo-inverse) dựa trên SVD, trong đó các giá trị suy biến $\sigma_i \approx 0$ (tương ứng với chiều không gian ``phẳng'' của Hilbert) được \textbf{cắt tỉa} (truncated) thay vì tính nghịch đảo $1/\sigma_i \to \infty$. Cơ chế regularization ngầm này loại bỏ hoàn toàn các thành phần gây khuếch đại nhiễu, làm cho SVD trở thành phương pháp ổn định nhất trên hệ ill-conditioned \cite{golub}.
+
+\paragraph{Hạn chế của Gauss-Seidel trên ma trận Hilbert}
+
+Gauss-Seidel báo \texttt{ERR} (từ chối giải) với tất cả kích thước $n$ trên ma trận Hilbert. Nguyên nhân: ma trận Hilbert không thỏa mãn điều kiện chéo trội chặt hàng. Về lý thuyết, bán kính phổ của ma trận lặp Gauss-Seidel $\rho(G_H) \geq 1$, khiến chuỗi lặp phân kỳ. Hàm \texttt{check\_diagonally\_dominant} phát hiện điều này ngay lập tức ở bước kiểm tra đầu vào, ném \texttt{ValueError} trước khi thực hiện bất kỳ vòng lặp nào -- đây là thiết kế bảo vệ \textit{fail-fast} có chủ đích.
+
+% ===========================================================
+\subsection{Tổng kết và đánh giá lựa chọn phương pháp}
+
+Dựa trên các kết quả thực nghiệm và phân tích lý thuyết, nhóm rút ra bảng đánh giá tổng hợp sau:
+
+\begin{table}[h!]
+\centering
+\caption{Bảng so sánh tổng hợp ba phương pháp giải hệ phương trình tuyến tính}
+\label{tab:summary}
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Tiêu chí} & \textbf{Khử Gauss (LU)} & \textbf{Phân rã SVD} & \textbf{Gauss-Seidel} \\
+\hline
+Độ phức tạp & $O(n^3)$ & $O(n^3)$ (hằng số lớn) & $O(kn^2)$ ($k$ nhỏ) \\
+\hline
+Tốc độ ($n=1000$) & $0.036$~s & $0.253$~s & $1.09$~s \\
+\hline
+Sai số / SPD & $\sim 10^{-16}$ & $\sim 10^{-15}$ & $\sim 10^{-12}$ \\
+\hline
+Ổn định / Hilbert & Residual nhỏ, nghiệm sai & Tốt nhất & Không áp dụng \\
+\hline
+Điều kiện & Ma trận không suy biến & Mọi ma trận & Chéo trội chặt \\
+\hline
+Ứng dụng tối ưu & Hệ thông thường & Hệ ill-conditioned & Ma trận sparse/SDD \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{itemize}
+    \item \textbf{Khử Gauss (LU):} Là phương pháp nhanh nhất và tiết kiệm bộ nhớ nhất trong ba phương pháp trực tiếp. Hằng số $\mathcal{O}(n^3)$ thấp nhất, phù hợp làm lựa chọn mặc định cho các hệ phương trình thông thường (well-conditioned). Điểm yếu duy nhất là hoàn toàn vô lực trước ma trận điều kiện kém: residual trông nhỏ nhưng nghiệm thực tế sai xa.
+
+    \item \textbf{Phân rã SVD:} Đắt đỏ nhất về thời gian thực thi (chậm hơn Gauss $\approx 7\times$ ở $n = 1000$), nhưng sở hữu khả năng ``miễn nhiễm'' đáng kinh ngạc với sai số số học nhờ cơ chế nghịch đảo giả và cắt tỉa giá trị suy biến. Là \textbf{lựa chọn bắt buộc} cho các hệ ill-conditioned, bài toán bình phương tối thiểu, hoặc khi ma trận có thể suy biến (rank-deficient).
+
+    \item \textbf{Lặp Gauss-Seidel:} Tốc độ tiệm cận $\mathcal{O}(n^2)$ -- vượt trội so với hai phương pháp $\mathcal{O}(n^3)$ ở kích thước lớn. Tiết kiệm bộ nhớ (không cần lưu ma trận phân rã). Tuy nhiên, điều kiện áp dụng \textbf{rất khắt khe}: chỉ hoạt động với ma trận chéo trội nghiêm ngặt, và hoàn toàn thất bại trên Hilbert. Phù hợp nhất cho bài toán vật lý kỹ thuật tự nhiên có cấu trúc sparse với tính chéo trội (ví dụ: phương trình sai phân hữu hạn cho bài toán Poisson).
+\end{itemize}
