@@ -1,0 +1,178 @@
+=============================================================================
+ PHÂN TÍCH TÍNH ỔN ĐỊNH SỐ  |  part3/benchmark.py
+=============================================================================
+
+ n ∈ {50, 100, 200, 500, 1000}.
+ Gauss & SVD (n > 15): dùng numpy verify (pure Python quá chậm với n lớn).
+ Gauss-Seidel: báo ERR ngay nếu ma trận không chéo trội chặt hàng.
+
+-----------------------------------------------------------------------------
+    n |     Loại |        κ₂(A) |        Gauss |          SVD |  Gauss-Seidel
+-----------------------------------------------------------------------------
+   50 |  Hilbert |    1.099e+19 |    1.192e-15 |    1.504e-15 |           ERR
+   50 |      SPD |    1.357e+01 |    1.189e-16 |    4.175e-16 |           ERR
+  100 |  Hilbert |    3.311e+19 |    1.158e-14 |    1.052e-15 |           ERR
+  100 |      SPD |    2.642e+01 |    1.825e-16 |    7.466e-16 |           ERR
+  200 |  Hilbert |    1.597e+20 |    1.358e-15 |    7.776e-16 |           ERR
+  200 |      SPD |    5.108e+01 |    1.398e-16 |    6.492e-16 |           ERR
+  500 |  Hilbert |    1.824e+20 |    3.485e-15 |    1.473e-15 |           ERR
+  500 |      SPD |    1.269e+02 |    1.900e-16 |    7.141e-16 |           ERR
+ 1000 |  Hilbert |    2.596e+20 |    2.102e-14 |    1.569e-15 |           ERR
+ 1000 |      SPD |    2.509e+02 |    2.508e-16 |    7.961e-16 |           ERR
+-----------------------------------------------------------------------------
+
+
+=================================================================================
+ ĐỊNH LÝ 3.1 — Phân tích sai số nghiệm
+=================================================================================
+
+ Cho Ax = b là nghiệm đúng và Ax̂ = b + δb là nghiệm với nhiễu
+ dữ liệu δb (sai số làm tròn, sai số đo lường,...). Khi đó:
+
+              ||x̂ - x||              ||δb||
+              --------- ≤  κ(A)  ·  ------        (Định lý 3.1)
+                ||x||                ||b||
+
+  Trong đó:
+    κ₂(A) = σ_max(A) / σ_min(A) = ||A||₂ · ||A⁻¹||₂
+
+  Ý nghĩa:
+    Sai số tương đối của NGHIỆM bị khuếch đại lên κ₂(A) lần
+    so với sai số tương đối của DỮ LIỆU ĐẦU VÀO b.
+
+    → Khi κ₂(A) lớn (Hilbert): một sai số không tránh khỏi
+      trong quá trình tính toán (sai số làm tròn ε_machine ≈ 1e-16)
+      bị khuếch đại thành sai số nghiệm có thể lên tới
+      κ₂(A) · ε_machine.
+
+    → Với Hilbert n=50:  κ₂ ≈ 1e19  ⟹  sai số nghiệm ~ 1e3  (!!)
+    → Với Hilbert n=100: κ₂ ≈ 3e19  ⟹  sai số nghiệm ~ 3e3
+    → Hệ này hoàn toàn mất tính ổn định số.
+
+ [!] Ghi chú về cột sai số trong bảng:
+     Bảng trên đo relative residual = ||A·x̂ - b||₂ / ||b||₂.
+     Đây KHÔNG phải ||x̂ - x||/||x|| mà Định lý 3.1 đề cập.
+     Residual nhỏ KHÔNG có nghĩa là nghiệm x̂ gần x_true.
+     Chính sự khác biệt này là bẫy của ma trận ill-conditioned.
+
+
+========================================================================
+ PHÂN TÍCH TÍNH ỔN ĐỊNH THEO TỪNG LOẠI MA TRẬN
+========================================================================
+
+ [1] HILBERT H_n  (ill-conditioned)
+ ------------------------------------
+  Công thức: H[i][j] = 1 / (i + j + 1)
+
+  κ₂(H_n) — đo bằng σ_max / σ_min:
+    n=50   ⇒  κ₂ ≈ 1.1×10¹⁹
+    n=100  ⇒  κ₂ ≈ 3.3×10¹⁹
+    n=200  ⇒  κ₂ ≈ 1.6×10²⁰
+    n=500  ⇒  κ₂ ≈ 1.8×10²⁰
+    n=1000 ⇒  κ₂ ≈ 2.6×10²⁰
+
+  Áp dụng Định lý 3.1:
+    δb ≈ ε_machine · ||b|| là nhiễu không thể tránh do làm tròn.
+    ⟹ ||x̂ - x|| / ||x|| ≲ κ₂ · ε_machine ≈ 10²⁰ · 10⁻¹⁶ = 10⁴
+
+    → Sai số nghiệm lên đến 10,000 lần nghiệm thật!
+    → Gauss: residual trông nhỏ (~1e-14) nhưng nghiệm x̂ sai hoàn toàn.
+    → SVD: ổn định hơn nhờ bỏ σ_min ≈ 0, nhưng cũng không tránh khỏi
+      giới hạn của κ₂ khi n lớn.
+
+
+ [2] MA TRẬN SPD  (well-conditioned)
+ ------------------------------------
+  Công thức: A = X·Xᵀ + n·I
+
+  κ₂(A) — tăng tuyến tính:
+    n=50   ⇒  κ₂ ≈ 13.6
+    n=100  ⇒  κ₂ ≈ 26.4
+    n=200  ⇒  κ₂ ≈ 51.1
+    n=500  ⇒  κ₂ ≈ 126.9
+    n=1000 ⇒  κ₂ ≈ 250.9
+
+  Áp dụng Định lý 3.1:
+    ||x̂ - x|| / ||x|| ≲ 250 · 1e-16 = 2.5e-14  (với n=1000)
+    → Sai số nghiệm vẫn cực nhỏ, gần machine precision.
+    → Gauss và SVD đều cho residual ≈ 1e-16 ÷ 1e-15 (đúng kỳ vọng).
+
+
+=======================================================================
+ SO SÁNH 3 PHƯƠNG PHÁP TRÊN MA TRẬN HILBERT
+=======================================================================
+
+  +----------------+-----------------------------------------------+
+  | Phương pháp    | Hành vi trên Hilbert H_n                      |
+  +----------------+-----------------------------------------------+
+  | Gauss          | - Residual nhỏ nhưng nghiệm sai xa.           |
+  | (partial pivot)| - Gauss không giảm được κ₂(A).                |
+  |                | - Theo Định lý 3.1: sai số ~ κ₂ · ε ~ 10⁴.    |
+  +----------------+-----------------------------------------------+
+  | SVD            | - Bỏ σ_min ≈ 0 (nghịch đảo giả).              |
+  |                | - Giảm thiệt hại do σ_min nhỏ gây ra.         |
+  |                | - Ổn định nhất, residual < Gauss.             |
+  +----------------+-----------------------------------------------+
+  | Gauss-Seidel   | - Điều kiện hội tụ: chéo trội chặt hàng.      |
+  |                | - Hilbert KHÔNG thỏa → ValueError ngay.       |
+  |                | - Không áp dụng được cho Hilbert.             |
+  +----------------+-----------------------------------------------+
+
+
+=====================================================================
+ KẾT LUẬN
+=====================================================================
+
+  1. SVD ổn định nhất trên ma trận ill-conditioned
+     SVD dùng σ_max/σ_min để đo κ₂, và khi giải bằng nghịch đảo giả
+     sẽ bỏ qua các σ_min ≈ 0, tránh khuếch đại nhiễu. Đây là phương
+     pháp phân rã tốt nhất cho Hilbert theo tiêu chí Định lý 3.1.
+
+  2. Gauss thất bại về sai số nghiệm dù residual trông nhỏ
+     Định lý 3.1 chỉ rõ: với κ₂(H_n) ≈ 10²⁰, một nhiễu ε_machine
+     trong b bị khuếch đại thành sai số nghiệm ~10⁴. Residual nhỏ
+     không phản ánh độ chính xác của nghiệm — đây là bẫy đặc trưng
+     của hệ ill-conditioned.
+
+  3. Gauss-Seidel không áp dụng được cho Hilbert
+     Hilbert không thỏa điều kiện chéo trội chặt hàng. Gauss-Seidel
+     không hội tụ và bị từ chối ngay tại bước kiểm tra điều kiện.
+
+  4. SPD được bảo vệ bởi n·I
+     Thêm n·I đảm bảo κ₂ ≈ O(n), theo Định lý 3.1 sai số nghiệm
+     ≲ n · ε_machine — hoàn toàn chấp nhận được với mọi n thực tế.
+
+======================================================================
+
+
+=============================================================================
+ BẢNG THỜI GIAN TRUNG BÌNH (5 LẦN CHẠY) - PURE PYTHON (SOLVERS.PY)
+=============================================================================
+    n |     Loại |        Gauss |          SVD |  Gauss-Seidel
+--------------------------------------------------------------
+   50 |  Hilbert |          ERR |      0.5935s |           ERR
+   50 |      SPD |      0.0119s |      0.7106s |           ERR
+  100 |  Hilbert |          ERR |      8.7200s |           ERR
+  100 |      SPD |      0.0964s |     11.1704s |           ERR
+  200 |  Hilbert |      0.3876s |  T.O. (>60s) |           ERR
+  200 |      SPD |      0.7774s |  T.O. (>60s) |           ERR
+  500 |  Hilbert |      4.9703s |  T.O. (>60s) |           ERR
+  500 |      SPD |     14.1605s |  T.O. (>60s) |           ERR
+ 1000 |  Hilbert |  T.O. (>60s) |  T.O. (>60s) |           ERR
+ 1000 |      SPD |  T.O. (>60s) |  T.O. (>60s) |           ERR
+--------------------------------------------------------------
+ T.O. : Timeout (Bỏ qua do thời gian chạy Pure Python quá lâu).
+ ERR  : Ma trận không thỏa mãn điều kiện hội tụ (Gauss-Seidel).
+
+
+=============================================================================
+ BẢNG THỜI GIAN TRUNG BÌNH (INCREMENTAL LOGGING) - PURE PYTHON
+=============================================================================
+    n |     Loại |        Gauss |          SVD |  Gauss-Seidel
+--------------------------------------------------------------
+   50 |  Hilbert |          ERR |      0.6502s |           ERR
+   50 |      SPD |      0.0136s |      0.7576s |           ERR
+  100 |  Hilbert |          ERR |     10.1721s |           ERR
+  100 |      SPD |      0.1147s |     12.1804s |           ERR
+  200 |  Hilbert |      0.3917s |    128.2082s |           ERR
+  200 |      SPD |      0.8094s |    339.9578s |           ERR
