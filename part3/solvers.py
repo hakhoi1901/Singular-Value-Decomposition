@@ -1,93 +1,117 @@
 """
-solvers.py - File thuật toán giải hệ phương trình tuyến tính.
-Cung cấp hàm phân luồng solve_system() theo spec §II.2.
+solvers.py - Giải hệ phương trình tuyến tính Ax = b.
+
+Chiến lược (100% NumPy cho Gauss & SVD, Pure Python cho Gauss-Seidel):
+  - 'gauss'        : np.linalg.solve → fallback np.linalg.lstsq nếu singular.
+  - 'svd'          : np.linalg.lstsq (pseudo-inverse).
+  - 'gauss_seidel' : Vòng lặp Pure Python (max_iter=1000). Yêu cầu chéo trội.
 """
 from __future__ import annotations
 
-import sys
 import math
-from pathlib import Path
+import numpy as np
 
-# ----- Path bootstrap -----
-_PART3 = Path(__file__).resolve().parent
-_ROOT  = _PART3.parent
-_PART1 = _ROOT / "part1"
-_PART2 = _ROOT / "part2"
 
-for _p in [str(_ROOT), str(_PART1), str(_PART2)]:
-    if _p not in sys.path:
-        sys.path.insert(0, _p)
-
-from config import EPSILON, is_zero, calculate_relative_error
-
+# ---------------------------------------------------------------------------
+# Utility
+# ---------------------------------------------------------------------------
 
 def check_diagonally_dominant(A: list[list[float]]) -> bool:
-    """Kiểm tra ma trận có chéo trội chặt hàng không."""
+    """Kiểm tra ma trận có chéo trội nghiêm ngặt theo hàng không."""
     n = len(A)
     for i in range(n):
         diag = abs(A[i][i])
-        row_sum = sum(abs(A[i][j]) for j in range(n) if j != i)
-        if diag <= row_sum:
+        off_sum = sum(abs(A[i][j]) for j in range(n) if j != i)
+        if diag <= off_sum:
             return False
     return True
 
 
-def solve_system(A: list[list[float]], b: list[float], method: str) -> list[float]:
+def _relative_error(A: list[list[float]], x: list[float], b: list[float]) -> float:
+    """Sai số tương đối ||Ax - b||₂ / ||b||₂."""
+    n = len(b)
+    residual = [
+        sum(A[i][j] * x[j] for j in range(n)) - b[i]
+        for i in range(n)
+    ]
+    norm_r = math.sqrt(sum(r ** 2 for r in residual))
+    norm_b = math.sqrt(sum(bi ** 2 for bi in b))
+    return norm_r / norm_b if norm_b != 0.0 else float("inf")
+
+
+# ---------------------------------------------------------------------------
+# Core dispatcher
+# ---------------------------------------------------------------------------
+
+def solve_system(
+    A: list[list[float]], b: list[float], method: str
+) -> list[float]:
     """
-    Hàm phân luồng.
-        A: Ma trận hệ số kích thước n x n.
-        b: Vector vế phải kích thước n.
-        method: Tên phương pháp giải, thuộc ['gauss', 'svd', 'gauss_seidel'].
+    Giải hệ Ax = b theo phương pháp chỉ định.
+
+    Args:
+        A      : Ma trận hệ số n × n (list of lists).
+        b      : Vector vế phải n phần tử.
+        method : 'gauss' | 'svd' | 'gauss_seidel'
+
     Returns:
-        x: Vector nghiệm kích thước n.
+        x : Vector nghiệm n phần tử.
+
     Raises:
-        ValueError: Nếu ma trận suy biến (cho Gauss) hoặc không thỏa điều kiện hội tụ (cho Gauss-Seidel).
+        ValueError : Gauss-Seidel được gọi với ma trận không chéo trội.
+        ValueError : method không hợp lệ.
     """
     n = len(A)
+    A_np = np.array(A, dtype=float)
+    b_np = np.array(b, dtype=float)
 
-    if method == 'gauss':
-        from gaussian import gaussian_eliminate
-        _, x, _ = gaussian_eliminate(A, b)
-        if not x:
-            raise ValueError("Ma trận suy biến hoặc hệ không có nghiệm duy nhất (Gauss).")
-        return x
+    # ------------------------------------------------------------------
+    # GAUSS (NumPy LU solver + lstsq fallback)
+    # ------------------------------------------------------------------
+    if method == "gauss":
+        try:
+            x_np = np.linalg.solve(A_np, b_np)
+        except np.linalg.LinAlgError:
+            # Ma trận singular (thường gặp với Hilbert lớn) → lstsq fallback
+            # Nghiệm least-squares vẫn cho sai số bùng nổ đưa vào báo cáo.
+            x_np, _, _, _ = np.linalg.lstsq(A_np, b_np, rcond=None)
+        return x_np.tolist()
 
-    elif method == 'svd':
-        from decomposition import decompose_svd
-        U, sigma, V_T = decompose_svd(A)
-        # V = V_T^T
-        V = [[V_T[j][i] for j in range(n)] for i in range(n)]
-        # U^T * b
-        Ut_b = [sum(U[i][k] * b[i] for i in range(n)) for k in range(n)]
-        # Sigma^+ * (U^T b): nghịch đảo giả, bỏ qua singular values < EPSILON
-        sigma_inv_Ut_b = [
-            (Ut_b[i] / sigma[i]) if i < len(sigma) and abs(sigma[i]) > EPSILON else 0.0
-            for i in range(n)
-        ]
-        # x = V * sigma_inv_Ut_b
-        x = [sum(V[i][j] * sigma_inv_Ut_b[j] for j in range(n)) for i in range(n)]
-        return x
+    # ------------------------------------------------------------------
+    # SVD (NumPy pseudo-inverse)
+    # ------------------------------------------------------------------
+    elif method == "svd":
+        x_np, _, _, _ = np.linalg.lstsq(A_np, b_np, rcond=None)
+        return x_np.tolist()
 
-    elif method == 'gauss_seidel':
+    # ------------------------------------------------------------------
+    # GAUSS-SEIDEL (Pure Python iterative, max_iter=1000)
+    # ------------------------------------------------------------------
+    elif method == "gauss_seidel":
         if not check_diagonally_dominant(A):
-            raise ValueError("Ma trận không chéo trội chặt hàng, Gauss-Seidel có thể không hội tụ.")
+            raise ValueError(
+                "Ma trận không chéo trội nghiêm ngặt → Gauss-Seidel không đảm bảo hội tụ."
+            )
 
-        max_iter = 10000
+        max_iter = 1000
         tol = 1e-10
         x = [0.0] * n
 
         for _ in range(max_iter):
             x_old = x[:]
             for i in range(n):
-                sigma_gs = sum(A[i][j] * x[j] for j in range(n) if j != i)
-                x[i] = (b[i] - sigma_gs) / A[i][i]
+                sigma = sum(A[i][j] * x[j] for j in range(n) if j != i)
+                x[i] = (b[i] - sigma) / A[i][i]
 
-            # Kiểm tra hội tụ
-            diff = math.sqrt(sum((x[i] - x_old[i]) ** 2 for i in range(n)))
+            diff = math.sqrt(sum((x[k] - x_old[k]) ** 2 for k in range(n)))
             if diff < tol:
                 break
 
         return x
 
+    # ------------------------------------------------------------------
     else:
-        raise ValueError(f"Phương pháp '{method}' không được hỗ trợ. Chọn: 'gauss', 'svd', 'gauss_seidel'.")
+        raise ValueError(
+            f"Phương pháp '{method}' không được hỗ trợ. "
+            "Chọn: 'gauss', 'svd', 'gauss_seidel'."
+        )
