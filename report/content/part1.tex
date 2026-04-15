@@ -355,21 +355,21 @@ Kết quả từ bộ kiểm thử được tổng hợp và phân tích trong b
 \begin{tabular}{|c|p{0.25\textwidth}|p{0.35\textwidth}|c|}
 \hline
 \textbf{STT} & \textbf{Kịch bản kiểm thử (Test Case)} & \textbf{Ý nghĩa và Phân tích} & \textbf{Sai số L2 ($e$)} \\ \hline
-1 & Hệ cơ bản (Nghiệm nguyên) & \textit{[TODO: Mô tả ngắn]} & \textit{0.00e+00} \\ \hline
-2 & Cần Partial Pivoting & \textit{[TODO: Mô tả ngắn]} & \textit{0.00e+00} \\ \hline
-3 & Nhiễu làm tròn (Round-off) & \textit{[TODO: Mô tả ngắn]} & \textit{$\sim 5.55e-17$} \\ \hline
-4 & Chênh lệch hệ số khổng lồ (Swamping) & \textit{[TODO: Mô tả ngắn]} & \textit{0.00e+00} \\ \hline
-5 & Hệ điều kiện kém (Near-singular) & \textit{[TODO: Mô tả ngắn]} & \textit{$\sim 2.22e-16$} \\ \hline
-6 & Ma trận Hilbert 3x3 & \textit{[TODO: Mô tả ngắn]} & \textit{$\sim 1.11e-16$} \\ \hline
-7 & Ma trận suy biến & \textit{[TODO: Mô tả ngắn]} & \textit{Bắt lỗi} \\ \hline
+1 & Hệ cơ bản (Nghiệm nguyên) & Khẳng định thuật toán tính đúng các hệ tiêu chuẩn. & \textit{0.00e+00} \\ \hline
+2 & Cần Partial Pivoting & Thuật toán nhận diện đúng chốt lớn nhất, tránh lỗi chia cho 0. & \textit{0.00e+00} \\ \hline
+3 & Nhiễu làm tròn (Round-off) & Hệ thống hấp thu tốt sai số dấu phẩy động. & \textit{$\sim 5.55e-17$} \\ \hline
+4 & Chênh lệch hệ số khổng lồ (Swamping) & Tránh hiện tượng số nhỏ bị nuốt chửng bởi số lớn. & \textit{0.00e+00} \\ \hline
+5 & Hệ điều kiện kém (Near-singular) & Hạn chế sự khuếch đại sai số ở mức tối đa. & \textit{$\sim 2.22e-16$} \\ \hline
+6 & Ma trận Hilbert 3x3 & Xác nhận tính ổn định khi đối mặt với hệ Ill-conditioned. & \textit{$\sim 1.11e-16$} \\ \hline
+7 & Ma trận suy biến & Bắt đúng ngoại lệ, ngăn hệ thống bị crash. & \textit{Bắt lỗi} \\ \hline
 \end{tabular}
 \caption{Tổng hợp kết quả kiểm thử và sai số trên các kịch bản.}
 \end{table}
 
 \begin{figure}[h!]
     \centering
-    % \includegraphics[width=\textwidth]{assets/part1-error.png}
-    \caption{Đánh giá độ ổn định số học: Custom Gaussian vs NumPy. [TODO: Chèn ảnh của bạn vào đây]}
+    \includegraphics[width=\textwidth]{assets/part1_test_results.png}
+    \caption{Đánh giá độ ổn định số học và tính đúng đắn của phần khử Gauss qua các ca kiểm thử.}
     \label{fig:part1_demo}
 \end{figure}
 

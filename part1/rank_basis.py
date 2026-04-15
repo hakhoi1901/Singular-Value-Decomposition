@@ -6,6 +6,7 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 from config import is_zero, zero_rectify, TestLogger
+from test_cases import RANK_BASIS_TEST_CASES
 
 
 def to_rref(A: list[list[float]], tol: float = None):

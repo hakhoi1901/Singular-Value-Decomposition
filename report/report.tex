@@ -19,9 +19,29 @@
 \usepackage{amsmath, amssymb, amsfonts} % Hỗ trợ công thức toán học
 \usepackage{hyperref}       % Tạo link click được cho Mục lục
 \usepackage{xurl}           % Hỗ trợ định dạng URL
+\usepackage{rotating}
 \setlist{nosep} % Loại bỏ khoảng trắng thừa giữa các dòng
 \setlist[itemize]{leftmargin=*} % Căn lề thông minh cho gạch đầu dòng
 \setlist[enumerate]{leftmargin=*} % Căn lề thông minh cho số thứ tự
+
+
+
+
+\usepackage{tcolorbox}
+
+% Cấu hình một cái hộp xám bo góc chuẩn GitHub để đựng code
+\tcbset{
+    mycodebox/.style={
+        colback=gray!5!white,    % Màu nền xám nhạt cực sang
+        colframe=gray!50!black,  % Màu viền xám đậm
+        boxrule=0.5pt,           % Độ dày viền mỏng
+        arc=3pt,                 % Bo góc tròn
+        left=2mm, right=2mm, top=2mm, bottom=2mm, % Căn lề trong hộp
+        fontupper=\ttfamily\small % Dùng font code (monospace)
+    }
+}
+
+
 
 % --- Cấu hình giãn dòng ---
 \usepackage{setspace}
