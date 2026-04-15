@@ -18,7 +18,10 @@ if str(_ROOT) not in sys.path:
 
 from config import is_zero, zero_rectify, TestLogger
 from back_substitution import back_substitution
-from test_cases import GAUSSIAN_ELIMINATE_TEST_CASES
+try:
+    from part1.test_cases import GAUSSIAN_ELIMINATE_TEST_CASES
+except ImportError:
+    from test_cases import GAUSSIAN_ELIMINATE_TEST_CASES
 from utils import is_upper_triangular
 
 

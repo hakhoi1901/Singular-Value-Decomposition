@@ -8,7 +8,10 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from test_cases import BACK_SUBSTITUTION_TEST_CASES
+try:
+    from part1.test_cases import BACK_SUBSTITUTION_TEST_CASES
+except ImportError:
+    from test_cases import BACK_SUBSTITUTION_TEST_CASES
 
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:

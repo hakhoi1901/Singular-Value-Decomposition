@@ -231,20 +231,29 @@ Phần này (đang phát triển) bao gồm:
 
 ## Trực quan hóa Manim
 
+link video: 
+
 Scene Manim trong `part2/manim_scene.py` trực quan hóa ý nghĩa hình học của SVD theo tiếp cận **"Rotate → Scale → Rotate"**.
 
 ### Nội dung video
 
-| Scene | Tiêu đề | Nội dung |
-|-------|---------|----------|
-| `Scene1_AnatomyOfChaos` | Anatomy of Chaos | Biến đổi tuyến tính phá vỡ tính trực giao như thế nào; giới thiệu SVD như giải pháp phục hồi |
+Kịch bản trực quan hóa được chia thành 4 cảnh chính, dẫn dắt từ trực giác hình học đến thuật toán toán học chi tiết:
 
-**Các phân cảnh trong Scene 1:**
-1. **Beat 0 — Intro:** Giới thiệu SVD và công thức $A = U\Sigma V^T$
-2. **Beat 1.1 — Orthonormal Basis:** Không gian 2D, đường tròn đơn vị, cơ sở $\hat{i}, \hat{j}$ vuông góc
-3. **Beat 1.2 — Linear Transformation:** Áp dụng ma trận $A = \begin{bmatrix}3&1\\0&2\end{bmatrix}$, đường tròn đơn vị biến thành elip
-4. **Beat 1.3 — Loss of Orthogonality:** Chứng minh $\langle A\hat{i}, A\hat{j} \rangle = 3 \neq 0$
-5. **Beat 1.4 — Core Question:** Các trục chính của elip chính là $\sigma_i u_i$ — SVD phục hồi lại tính trực giao
+1. **Cảnh 1: Giải phẫu sự hỗn loạn (Anatomy of Chaos)**
+   - Minh họa cách ma trận $A = \begin{bmatrix}3&1\\0&2\end{bmatrix}$ biến đường tròn đơn vị thành hình elip và làm mất đi góc vuông giữa hai vector cơ sở $\hat{i}, \hat{j}$. 
+   - Đặt ra vấn đề: Cần SVD để khôi phục lại một hệ cơ sở trực giao thông qua trục chính của elip.
+
+2. **Cảnh 2: Trực quan hóa hình học (Geometric Interpretation)**
+   - Phân rã trực quan SVD từ phải sang trái: **Xoay ($V^T$) $\rightarrow$ Kéo giãn ($\Sigma$) $\rightarrow$ Xoay lại ($U$)**.
+   - Chứng minh từng bước ma trận tác động lên không gian mà không làm mất tính trực giao.
+
+3. **Cảnh 3: Thuật toán và Toán học phía sau SVD**
+   - Chỉ ra cách tính toán $V^T$ qua trị riêng của $A^TA$, $\Sigma$ từ căn bậc hai của trị riêng, và $U$ từ công thức $u_i = \frac{A v_i}{\sigma_i}$.
+   - Ghép nối các thành phần đại số vào đồ họa trực quan của elip.
+
+4. **Cảnh 4: SVD vs Chéo hóa (Diagonalization)**
+   - So sánh trực quan hình học của phép chéo hóa ($A = PDP^{-1}$) nhấn mạnh "tính bất biến" nằm trên vector riêng (không trực giao).
+   - Nêu bật giới hạn của phương pháp chéo hóa (chỉ cho ma trận vuông thỏa mãn điệu kiện) so với khả năng đối phó mọi độ khó của SVD.
 
 ### Render video
 
@@ -269,8 +278,6 @@ manim -pql --format=gif part2/manim_scene.py Scene1_AnatomyOfChaos
 | `-qh` | High quality (1080p60) |
 | `-s` | Chỉ xuất frame cuối (ảnh tĩnh) |
 | `--format=gif` | Xuất định dạng GIF |
-
-Output video được lưu tại `part2/media/videos/`.
 
 ---
 

@@ -10,7 +10,10 @@ import sys
 import io
 from contextlib import redirect_stdout
 from pathlib import Path
-from test_cases import DETERMINANT_TEST_CASES
+try:
+    from part1.test_cases import DETERMINANT_TEST_CASES
+except ImportError:
+    from test_cases import DETERMINANT_TEST_CASES
 
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:

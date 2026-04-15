@@ -7,7 +7,10 @@ if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
 from config import zero_rectify, TestLogger
-from test_cases import VERIFY_SOLUTION_TEST_CASES
+try:
+    from part1.test_cases import VERIFY_SOLUTION_TEST_CASES
+except ImportError:
+    from test_cases import VERIFY_SOLUTION_TEST_CASES
 from utils import matvec, vector_norm
 
 

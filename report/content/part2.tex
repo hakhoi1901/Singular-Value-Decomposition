@@ -391,26 +391,30 @@ Các ca kiểm thử lỗi (khối Jordan bậc 2, ma trận quay có trị riê
 % ===========================================================
 \subsection{Kịch bản trực quan hóa Manim}
 
+\textbf{Video Demo Trực quan hóa SVD:} \url{}
+
 \subsubsection{Tổng quan video}
 
-File \texttt{part2/manim\_scene.py} xây dựng một chuỗi 5 cảnh (scenes) liên tiếp bằng thư viện Manim Community \cite{manim_docs}, trực quan hóa ý nghĩa hình học của phép phân rã $A = U\Sigma V^T$ theo mô hình ``Quay -- Co giãn -- Quay'' (Rotate -- Scale -- Rotate). Mỗi cảnh ứng với một bước biến đổi trong chuỗi $\mathbb{R}^n \xrightarrow{V^T} \xrightarrow{\Sigma} \xrightarrow{U} \mathbb{R}^m$. Các đối tượng hình học (hình tròn, elipse, vector mũi tên) được dựng và hoạt hóa bằng các API hình học của thư viện Manim \cite{manim_docs}.
+File \texttt{part2/manim\_scene.py} xây dựng chuỗi kịch bản gồm 4 cảnh (scenes) liên tiếp bằng thư viện Manim Community \cite{manim_docs}, dẫn dắt người xem từ việc hiểu bản chất hình học của phép biến đổi ma trận cho đến thuật toán lõi của SVD và so sánh với phương pháp chéo hóa. 
 
-\subsubsection{Cảnh 1: Giới thiệu bài toán}
+\subsubsection{Cảnh 1: Giải phẫu sự hỗn loạn (Anatomy of Chaos)}
+Minh họa cách một ma trận như $A = \begin{bmatrix} 3 & 1 \\ 0 & 2 \end{bmatrix}$ biến đường tròn đơn vị thành một hình elip, làm thay đổi góc vuông ban đầu của hai vector cơ sở $\hat{i}, \hat{j}$. Từ đó đặt ra nhu cầu khôi phục tính trực giao thông qua phân rã phép biến đổi thành Xoay $\rightarrow$ Giãn $\rightarrow$ Xoay cốt lõi của SVD.
 
-Cảnh đầu tiên hiển thị ma trận $A$ và công thức phân rã $A = U\Sigma V^T$ dưới dạng text và phương trình toán học. Đây là cảnh dẫn dắt, giúp người xem hiểu bố cục tổng thể của video trước khi đi vào từng bước biến đổi.
+\subsubsection{Cảnh 2: Trực quan hóa hình học (Geometric Interpretation)}
+Cụ thể hóa trực quan SVD qua ba phần:
+\begin{itemize}
+    \item \textbf{$V^T$:} Phép quay dò tìm hệ cơ sở phù hợp để biến đổi, giữ nguyên hình dạng khối tròn.
+    \item \textbf{$\Sigma$:} Phép co giãn hình vuông góc dọc và ngang, kéo đường tròn ban đầu thành hình elip.
+    \item \textbf{$U$:} Phép quay cuối cùng khớp elip trên trục mới vào lại elip của ảnh thực tế.
+\end{itemize}
 
-\subsubsection{Cảnh 2: Biến đổi $V^T$ (Quay lần 1)}
+\subsubsection{Cảnh 3: Thuật toán và Toán học phía sau SVD}
+Trình bày từng bước tính toán SVD kết hợp minh họa trực quan:
+\begin{itemize}
+    \item Phân tích ma trận đối xứng $A^T A$ để tìm trị riêng và vector riêng, hình thành $V^T$.
+    \item Rút căn bậc hai các trị riêng để tạo giá trị biến suy $\Sigma$.
+    \item Áp dụng hệ thức $u_i = \frac{A v_i}{\sigma_i}$ cho không gian $U$, kết hợp các ma trận dựng lại các đường bán trục của elip trực quan thông qua $\sigma_i u_i$.
+\end{itemize}
 
-Cảnh này vẽ hình tròn đơn vị trong không gian $\mathbb{R}^2$ cùng với hai vector cơ sở $e_1, e_2$. Khi áp dụng phép biến đổi $V^T$, hình tròn và các vector được hoạt hóa quay sang hướng mới. Vì $V^T$ là ma trận trực giao ($\det(V^T) = \pm 1$), hình tròn giữ nguyên hình dạng (không bị méo), chỉ thay đổi hướng -- minh họa trực quan tính chất bảo toàn chuẩn của phép quay trực giao.
-
-\subsubsection{Cảnh 3: Biến đổi $\Sigma$ (Co giãn)}
-
-Áp dụng tiếp ma trận đường chéo $\Sigma$ lên kết quả từ Cảnh~2. Hình tròn đơn vị được kéo thành \textbf{hình elipse}, với nửa trục lớn bằng $\sigma_1$ (giá trị suy biến thứ nhất) và nửa trục nhỏ bằng $\sigma_2$. Cảnh này minh họa rõ ràng vai trò của các giá trị suy biến: chúng xác định mức độ ``co giãn'' của không gian theo từng hướng chính.
-
-\subsubsection{Cảnh 4: Biến đổi $U$ (Quay lần 2)}
-
-Áp dụng phép quay $U$ lên hình elipse từ Cảnh~3. Tương tự Cảnh~2, $U$ là ma trận trực giao nên hình elipse chỉ quay mà không thay đổi hình dạng hay kích thước. Kết quả cuối cùng là ảnh của hình tròn đơn vị qua phép biến đổi toàn bộ $A = U\Sigma V^T$.
-
-\subsubsection{Cảnh 5: Tổng kết và kết luận}
-
-Cảnh cuối hiển thị đồng thời hình tròn ban đầu và hình elipse kết quả, cùng với chú thích về ý nghĩa của từng thành phần. Ngoài ra, cảnh này có thể trình bày ứng dụng xấp xỉ hạng thấp: khi giữ lại chỉ $k < r$ giá trị suy biến, ta thu được hình elipse ``dẹt'' hơn, trực quan hóa sự mất thông tin theo từng chiều.
+\subsubsection{Cảnh 4: SVD và Chéo hóa (Diagonalization)}
+So sánh SVD với kỹ thuật chéo hóa ($A = P D P^{-1}$). Trong khi phương pháp chéo hóa nhấn mạnh tính bất biến (quỹ đạo co giãn dọc theo đường hướng) trên các eigenvalue thường không trực giao, SVD cung cấp các hệ cơ sở chuẩn luôn trực giao bất chấp loại ma trận. Sức mạnh của SVD áp dụng được cho mọi cấp số hạng, tránh nguy cơ sụp đổ quỹ đạo khi có các đường không đủ bậc tự do.
