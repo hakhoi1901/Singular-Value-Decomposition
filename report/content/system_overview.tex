@@ -1,0 +1,174 @@
+% ============================================================
+%   TỔNG QUAN KIẾN TRÚC HỆ THỐNG VÀ CÁC MODULE DÙNG CHUNG
+% ============================================================
+\section{Tổng quan Kiến trúc Hệ thống và Các Module dùng chung}
+
+Trước khi đi vào chi tiết của từng phần, mục này trình bày kiến trúc tổng thể của toàn bộ dự án --- cách các module Python được tổ chức, các thành phần hạ tầng dùng chung giữa các phần, và nền tảng lý thuyết về quản lý sai số dấu phẩy động mà toàn bộ codebase đều phải tuân theo.
+
+% ------------------------------------------------------------
+\subsection{Tổ chức file theo hướng Module hóa}
+
+Toàn bộ dự án được thiết kế theo nguyên tắc \textbf{module hóa} (modular design): mỗi file Python đảm nhiệm một trách nhiệm duy nhất và rõ ràng, hạn chế phụ thuộc vòng (circular dependency), đồng thời cho phép tái sử dụng các thành phần cốt lõi mà không phải viết lại mã. Cụ thể, dự án được chia thành ba nhóm chức năng lớn:
+
+\begin{itemize}
+    \item \textbf{Hạ tầng dùng chung (root)}: \texttt{config.py} và \texttt{utils.py} nằm ở thư mục gốc. Đây là các module không phụ thuộc vào bất cứ module nào khác trong dự án; mọi module cấp trên đều có thể import từ đây.
+    \item \textbf{Module nghiệp vụ theo phần}: Mỗi phần bài toán (phép khử Gauss, phân rã SVD, giải hệ lặp) được đặt trong thư mục riêng (\texttt{part1/}, \texttt{part2/}, \texttt{part3/}). Các file trong mỗi thư mục chỉ import từ tầng hạ tầng hoặc từ các module nghiệp vụ khác theo định hướng phụ thuộc một chiều.
+    \item \textbf{Kiểm thử và tiện ích}: File \texttt{run\_all\_tests.py} và các \texttt{test\_cases.py} trong từng thư mục thu thập và chạy toàn bộ bộ kiểm thử, đồng thời \texttt{time\_benchmark.py} cung cấp công cụ đo hiệu năng so sánh giữa các thuật toán.
+\end{itemize}
+
+Cấu trúc này đảm bảo rằng: khi một module lõi (ví dụ \texttt{config.py}) được cập nhật, toàn bộ codebase hưởng ngay lợi ích mà không cần sửa lại ở nhiều nơi.
+
+% ------------------------------------------------------------
+\subsection{Module cấu hình toàn cục: \texttt{config.py}}
+
+Module \texttt{config.py} là file cấu hình dùng chung đầu tiên cần được hiểu. Nó định nghĩa hằng số epsilon toàn cục và hai hàm kiểm tra sai số được sử dụng xuyên suốt toàn bộ dự án.
+
+\begin{itemize}
+    \item \texttt{EPSILON = 1e-12}: Ngưỡng epsilon toàn cục. Mọi số có giá trị tuyệt đối nhỏ hơn ngưỡng này đều được coi là bằng~0 về mặt số học.
+    \item \texttt{is\_zero(x)}: Kiểm tra xem một số $x$ có xấp xỉ bằng 0 hay không theo ngưỡng \texttt{EPSILON}.
+    \item \texttt{zero\_rectify(value)}: Nếu \texttt{value} đủ nhỏ thì trả về \texttt{0.0} thay vì giữ nguyên giá trị nhiễu (ví dụ: \texttt{1e-16}), tránh hiện tượng ``ô nhiễm'' kết quả.
+    \item \texttt{TestLogger}: Lớp tiện ích cung cấp định dạng in màu (ANSI) cho các bộ kiểm thử --- in trạng thái PASSED/FAILED và tổng kết -- được dùng nhất quán trong toàn bộ dự án.
+\end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Module \texttt{config.py} --- hằng số và hàm xử lý sai số dùng chung}]
+EPSILON = 1e-12
+
+def is_zero(x):
+    """Kiem tra mot so co xap xi bang 0 hay khong."""
+    return abs(x) < EPSILON
+
+def zero_rectify(value):
+    """Khu gia tri ve 0 neu no du nho."""
+    return 0.0 if is_zero(value) else value
+
+class TestLogger:
+    GREEN = '\033[92m'; RED = '\033[91m'
+    CYAN  = '\033[96m'; RESET = '\033[0m'; BOLD = '\033[1m'
+
+    @classmethod
+    def print_result(cls, test_name, passed, details=""):
+        status = f"{cls.GREEN}{cls.BOLD}PASSED{cls.RESET}" if passed \
+                 else f"{cls.RED}{cls.BOLD}FAILED{cls.RESET}"
+        print(f" {test_name:<45} {status}  {details}")
+
+    @classmethod
+    def print_summary(cls, passed, total):
+        tag = "PASSED" if passed == total else "CAN KIEM TRA LAI!"
+        print(f"{cls.BOLD} TONG KET: {passed}/{total} {tag}{cls.RESET}")
+\end{lstlisting}
+
+Việc tách riêng hằng số và hàm xử lý sai số vào \texttt{config.py} giúp đảm bảo tính nhất quán: giá trị ngưỡng \texttt{EPSILON} chỉ cần khai báo một lần duy nhất, tránh tình trạng mỗi module tự định nghĩa một giá trị epsilon khác nhau dẫn đến hành vi không nhất quán.
+
+% ------------------------------------------------------------
+\subsection{Các hàm tiện ích nội bộ dùng chung: \texttt{utils.py}}
+
+Bên cạnh \texttt{config.py}, module \texttt{utils.py} cung cấp một thư viện các phép toán đại số tuyến tính cơ bản được tái sử dụng xuyên suốt dự án. Toàn bộ được cài đặt \textbf{từ đầu bằng Python thuần}, không phụ thuộc vào \texttt{numpy} hay bất kỳ thư viện số học nào.
+
+\paragraph{Nhóm phép toán cơ bản}
+
+\begin{itemize}
+    \item \texttt{identity\_matrix(n)}: Tạo ma trận đơn vị $I_n$ dưới dạng list 2 chiều.
+    \item \texttt{transpose(A)}: Chuyển vị ma trận bằng \texttt{zip(*A)}, trả về ma trận $A^T$.
+    \item \texttt{matmul(A, B)}: Nhân hai ma trận theo thuật toán $\mathcal{O}(mnp)$. Có tối ưu nhỏ: bỏ qua vòng lặp trong nếu $a_{ik} \approx 0$ (kiểm tra qua \texttt{is\_zero}).
+    \item \texttt{matvec(A, v)}: Tích ma trận--vector $Av$, trả về danh sách 1 chiều.
+    \item \texttt{dot\_product(u, v)}: Tích vô hướng của hai vector.
+    \item \texttt{vector\_norm(v)}: Chuẩn Euclidean $\|v\|_2 = \sqrt{\sum v_i^2}$; dùng \texttt{max(0.0, ...)} đề phòng kết quả âm nhỏ do sai số số học trước khi lấy căn.
+    \item \texttt{normalize(v)}: Chuẩn hóa vector về đơn vị ($\|v\|_2 = 1$); trả về vector 0 nếu chuẩn ban đầu xấp xỉ 0.
+\end{itemize}
+
+\paragraph{Nhóm kiểm tra và chuẩn hóa}
+
+\begin{itemize}
+    \item \texttt{is\_upper\_triangular(U, tol)}: Kiểm tra ma trận $U$ có phải tam giác trên không (dung sai \texttt{tol}).
+    \item \texttt{check\_identity(M, tol)}: Kiểm tra ma trận $M$ có xấp xỉ ma trận đơn vị không.
+    \item \texttt{is\_zero\_tol(x, tol)}: Kiểm tra số $x$ gần 0 với ngưỡng \texttt{tol} tuỳ chỉnh (bổ sung cho \texttt{is\_zero} dùng \texttt{EPSILON} cố định).
+    \item \texttt{rectify\_matrix(M)}: Áp dụng \texttt{zero\_rectify} lên từng phần tử ma trận.
+    \item \texttt{rectify\_vector(v)}: Tương tự nhưng cho vector 1 chiều.
+    \item \texttt{max\_abs\_diff(A, B)}: Tính sai số lớn nhất $\max_{ij}|A_{ij} - B_{ij}|$ giữa hai ma trận --- dùng làm thước đo độ chính xác trong bộ kiểm thử.
+\end{itemize}
+
+\paragraph{Nhóm trực giao hóa Gram--Schmidt}
+
+\begin{itemize}
+    \item \texttt{orthogonalize(v, basis)}: Chiếu vector $v$ ra khỏi tất cả các vector trong \texttt{basis} (đã chuẩn hóa) theo công thức Gram--Schmidt cổ điển:
+    \begin{equation}
+        w = v - \sum_{b \in \text{basis}} \langle v, b \rangle \cdot b
+    \end{equation}
+    Mỗi lần trừ xong một thành phần, kết quả được làm sạch qua \texttt{zero\_rectify} để triệt tiêu nhiễu dấu phẩy động.
+    \item \texttt{find\_new\_unit\_vector(basis, dim)}: Khi cần bổ sung thêm vector vào cơ sở trực giao (ví dụ: ma trận suy biến thiếu vector suy biến), hàm lần lượt thử các vector chỉ $e_1, e_2, \ldots, e_n$. Mỗi ứng viên được trực giao hóa với \texttt{basis} rồi chuẩn hóa. Nếu toàn bộ thử thất bại (hiếm gặp), hàm thử vector $(1,2,3,\ldots)$ làm phương án dự phòng và ném \texttt{ValueError} nếu vẫn thất bại.
+\end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Trích đoạn \texttt{utils.py}: một số hàm tiện ích nội bộ quan trọng}]
+from config import is_zero, zero_rectify
+import math
+
+def matmul(A, B):
+    m, p, n = len(A), len(A[0]), len(B[0])
+    C = [[0.0] * n for _ in range(m)]
+    for i in range(m):
+        for k in range(p):
+            if is_zero(A[i][k]):
+                continue
+            for j in range(n):
+                C[i][j] += A[i][k] * B[k][j]
+    return C
+
+def orthogonalize(v, basis):
+    w = [float(x) for x in v]
+    for b in basis:
+        coeff = dot_product(w, b)
+        if is_zero(coeff):
+            continue
+        for i in range(len(w)):
+            w[i] = zero_rectify(w[i] - coeff * b[i])
+    return w
+
+def find_new_unit_vector(basis, dim):
+    for idx in range(dim):
+        candidate = [0.0] * dim
+        candidate[idx] = 1.0
+        w = orthogonalize(candidate, basis)
+        nw = vector_norm(w)
+        if not is_zero(nw):
+            return [zero_rectify(x / nw) for x in w]
+    raise ValueError("Khong the xay dung co so truc giao")
+\end{lstlisting}
+
+% ------------------------------------------------------------
+\subsection{Quản lý Sai số Dấu phẩy động: IEEE 754 và Machine Epsilon}
+\label{sec:floating_point}
+
+Toàn bộ dự án làm việc với số thực dưới dạng số dấu phẩy động 64-bit (double precision) theo chuẩn \textbf{IEEE 754} \cite{ieee754}. Việc hiểu và kiểm soát sai số từ biểu diễn này là nền tảng bắt buộc để các thuật toán số học cho kết quả đáng tin cậy.
+
+\subsubsection{Giới hạn biểu diễn: Machine Epsilon}
+
+Chuẩn IEEE 754 double precision biểu diễn số thực dưới dạng:
+\begin{equation}
+    x = (-1)^s \cdot m \cdot 2^e
+\end{equation}
+trong đó $s \in \{0,1\}$ là bit dấu, $m$ là phần định trị (mantissa) 52 bit, và $e$ là số mũ 11 bit. Hệ quả trực tiếp là không phải mọi số thực đều có thể được biểu diễn chính xác --- giữa hai số thực liền kề bất kỳ luôn tồn tại một khoảng cách nhỏ nhất, gọi là \textbf{machine epsilon} $\varepsilon_\text{mach}$:
+\begin{equation}
+    \varepsilon_\text{mach} = 2^{-52} \approx 2.22 \times 10^{-16}
+\end{equation}
+Đây là sai số tương đối nhỏ nhất mà phép tính dấu phẩy động có thể gây ra trong \textit{một phép toán đơn lẻ}. Khi các phép toán được xâu chuỗi (như trong phép khử Gauss nhiều bước), sai số có thể tích lũy và lan rộng.
+
+\subsubsection{Chiến lược quản lý sai số trong dự án}
+
+Dự án áp dụng ba lớp kiểm soát sai số chồng lên nhau:
+
+\paragraph{Lớp 1 --- Ngưỡng epsilon toàn cục (\texttt{EPSILON = 1e-12})}
+Thay vì so sánh bằng tuyệt đối (\texttt{x == 0.0}), mọi phép so sánh với 0 đều đi qua hàm \texttt{is\_zero(x)} với ngưỡng $\varepsilon = 10^{-12}$. Ngưỡng này được chọn cẩn thận:
+\begin{itemize}
+    \item Lớn hơn $\varepsilon_\text{mach} \approx 2.2 \times 10^{-16}$ đủ nhiều để hấp thu nhiễu số học tích lũy qua nhiều bước tính toán.
+    \item Nhỏ hơn $10^{-6}$ đủ để không nhầm lẫn các giá trị thực sự nhỏ nhưng khác không với số 0.
+\end{itemize}
+
+\paragraph{Lớp 2 --- Làm sạch kết quả trung gian (\texttt{zero\_rectify})}
+Sau mỗi phép toán lớn (một bước khử Gauss, một vòng lặp Jacobi, một phép nhân ma trận), kết quả được lọc qua \texttt{zero\_rectify}. Điều này ngăn các số dư như \texttt{-2.77e-16} (thực chất là 0) làm ``ô nhiễm'' các bước tính toán tiếp theo --- đặc biệt quan trọng khi giá trị này xuất hiện ở vị trí phần tử chốt (pivot) trong phép khử Gauss.
+
+\paragraph{Lớp 3 --- Chọn chốt từng phần (Partial Pivoting)}
+Chiến lược này (được phân tích chi tiết trong Phần~\ref{sec:partial_pivoting}) đảm bảo hệ số nhân $l_{ik} = a_{ik}/a_{kk}$ luôn $\leq 1$ về trị tuyệt đối, hạn chế tối đa sự khuếch đại sai số qua từng bước khử. Đây là biện pháp phòng ngừa ở cấp độ thuật toán, bổ sung cho hai lớp làm sạch số học ở trên.
+
+\subsubsection{Nhận xét về sai số quan sát được}
+
+Trong kết quả kiểm thử thực tế (Phần~\ref{sec:extended_applications}), sai số phần dư L2 của nghiệm thường nằm trong khoảng $10^{-16}$ đến $10^{-15}$ --- tức là bậc $\varepsilon_\text{mach}$. Điều này cho thấy các thuật toán đang hoạt động ở mức \textit{backward stable}: sai số trong nghiệm tương đương với sai số của việc giải chính xác một bài toán ``hơi khác'' so với bài toán gốc, với độ lệch cỡ $\varepsilon_\text{mach}$ \cite{higham2002, trefethen}.
