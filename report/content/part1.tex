@@ -1,69 +1,401 @@
-\section{Phần 1: Phép khử Gauss và Các Ứng Dụng}
-Trong phần này, nhóm tiến hành cài đặt phương pháp khử Gauss có chọn phần tử chốt (Partial Pivoting) từ đầu bằng Python...
+\section{Phần 1: Phép khử Gauss và các ứng dụng}
+Trong phần này, nhóm tiến hành cài đặt từ đầu thuật toán khử Gauss có chọn phần tử chốt từng phần (\textit{Partial Pivoting}) hoàn toàn bằng Python thuần, không sử dụng các thư viện tính toán. Theo định hướng từ các tài liệu nền tảng về đại số tuyến tính và tính toán ma trận \cite{strang,golub}, mục tiêu cốt lõi là xây dựng một bộ giải hệ phương trình tuyến tính $Ax=b$ ổn định, đồng thời tái sử dụng thuật toán này để giải quyết các bài toán đại số tuyến tính mở rộng.
+
+\subsection{Mục tiêu và phạm vi}
+Phạm vi chức năng và các mục tiêu chính của phần này bao gồm:
+\begin{itemize}
+    \item Cài đặt thuật toán khử tiến (\texttt{gaussian\_eliminate}) và thế lùi (\texttt{back\_substitution}) từ đầu (from scratch) chỉ sử dụng cấu trúc dữ liệu list thuần của Python.
+    \item Áp dụng chiến lược \textit{Partial Pivoting} để đảm bảo tính ổn định số học, tránh lỗi chia cho 0 và giảm thiểu sự khuếch đại sai số làm tròn.
+    \item Mở rộng ứng dụng của phép khử Gauss để: 
+    \begin{itemize}
+        \item Tính định thức (có theo dõi số lần hoán vị dòng).
+        \item Tìm ma trận nghịch đảo bằng phương pháp Gauss-Jordan.
+        \item Tính hạng và trích xuất cơ sở cho các không gian vector (Null space, Column space).
+    \end{itemize}
+    \item Đối chiếu kết quả với các hàm chuẩn của \texttt{numpy.linalg} và phân tích sai số số học bằng chuẩn L2 phần dư để kiểm chứng tính đúng đắn và độ ổn định.
+\end{itemize}
 
 \subsection{Cơ sở lý thuyết}
-Nội dung cơ sở lý thuyết về phép khử Gauss, định nghĩa ma trận tăng cường, các phép biến đổi dòng sơ cấp...
 
-\subsection{Cài đặt thuật toán}
-Trình bày về cấu trúc hàm \texttt{gaussian\_eliminate(A, b)}...
+\subsection{Phương pháp khử Gauss và Thế lùi}
+Phương pháp khử Gauss là một thuật toán nền tảng trong đại số tuyến tính để giải hệ phương trình $Ax=b$. Theo trình bày của Strang \cite{strang}, quá trình này bao gồm hai giai đoạn chính: khử tiến để đưa ma trận về dạng tam giác trên, và thế lùi để tìm nghiệm từ ma trận kết quả.
 
-\begin{lstlisting}[language=Python, caption=code mẫu]
-import numpy as np
+\subsubsection{Giai đoạn 1: Khử tiến (Forward Elimination)}
+Mục tiêu của giai đoạn này là biến đổi ma trận hệ số $A$ thành một ma trận tam giác trên $U$ thông qua các phép biến đổi dòng sơ cấp. Thuật toán xử lý trên ma trận tăng cường (augmented matrix) $M = [A|b]$. Tại mỗi bước thứ $k$, thuật toán sử dụng phần tử trên đường chéo chính $a_{kk}$ (gọi là phần tử chốt - pivot) để triệt tiêu tất cả các phần tử nằm dưới nó trong cùng một cột.
 
-def process_data(data_path):
-    print("Code minh hoa chen tai phu luc...")
-    return True
+Cụ thể, với mỗi dòng $i$ (với $i > k$), ta tính một hệ số nhân $l_{ik}$ và thực hiện phép biến đổi:
+\begin{equation}
+    \text{Hàng}_i \leftarrow \text{Hàng}_i - l_{ik} \cdot \text{Hàng}_k \quad \text{với hệ số } l_{ik} = \frac{a_{ik}}{a_{kk}}
+\end{equation}
+Quá trình này được lặp lại cho đến khi tất cả các phần tử dưới đường chéo chính đều bằng 0, ta thu được hệ phương trình tương đương $Ux=c$.
+
+Logic khử tiến này được cài đặt trực tiếp trong file \texttt{gaussian.py}. Vòng lặp bên ngoài duyệt qua các cột chốt, và vòng lặp bên trong thực hiện phép trừ dòng cho tất cả các dòng bên dưới.
+
+\begin{lstlisting}[language=Python, caption={Trích đoạn logic khử tiến từ \texttt{gaussian.py}}]
+# Tại cột j, chọn pivot theo partial pivoting
+p = pivot_row
+best = abs(M[pivot_row][j])
+for i in range(pivot_row + 1, m):
+    if abs(M[i][j]) > best:
+        best = abs(M[i][j])
+        p = i
+
+pivot = M[p][j]
+if is_zero(pivot):
+    continue
+if p != pivot_row:
+    M[pivot_row], M[p] = M[p], M[pivot_row]
+
+# Khử các phần tử dưới pivot
+for i in range(pivot_row + 1, m):
+    if is_zero(M[i][j]):
+        continue
+    lik = M[i][j] / M[pivot_row][j]
+    for k in range(j, n + 1):
+        M[i][k] = zero_rectify(M[i][k] - lik * M[pivot_row][k])
+\end{lstlisting}
+Đoạn mã trên thể hiện đúng ba ý cốt lõi của khử tiến trong mã nguồn thực tế: chọn chốt theo trị tuyệt đối lớn nhất, bỏ qua cột không có pivot hữu hiệu, và triệt tiêu các phần tử bên dưới pivot bằng phép trừ dòng.
+
+\subsubsection{Giai đoạn 2: Thế lùi (Back Substitution)}
+Sau khi có hệ tam giác trên $Ux=c$, ta có thể dễ dàng tìm ra nghiệm bằng cách giải ngược từ ẩn cuối cùng $x_n$ trở về ẩn đầu tiên $x_1$. 
+Phương trình cuối cùng có dạng $u_{nn}x_n = c_n$, từ đó ta có ngay:
+\begin{equation}
+    x_n = \frac{c_n}{u_{nn}}
+\end{equation}
+Với các ẩn còn lại, ta tính theo công thức tổng quát cho $x_i$ (với $i = n-1, n-2, \dots, 1$):
+\begin{equation}
+    x_i = \frac{1}{u_{ii}} \left( c_i - \sum_{j=i+1}^{n} u_{ij} x_j \right)
+\end{equation}
+Trong đó, tổng $\sum_{j=i+1}^{n} u_{ij} x_j$ là tổng của các tích giữa hệ số và các nghiệm đã được tìm thấy ở các bước trước đó.
+
+Thuật toán thế lùi này được cài đặt trong hàm \texttt{back\_substitution} từ file \texttt{back\_substitution.py}.
+
+\begin{lstlisting}[language=Python, caption={Trích đoạn logic thế lùi từ \texttt{back\_substitution.py}}]
+n = len(U)
+x = [0.0] * n # Khởi tạo vector nghiệm
+
+# Vòng lặp chạy ngược từ hàng n-1 về hàng 0
+for i in range(n - 1, -1, -1):
+    # Tính tổng ở vế phải (SUM u_ij * x_j)
+    s = c[i] - sum(U[i][j] * x[j] for j in range(i + 1, n))
+    
+    # Áp dụng công thức (3) để tìm x_i (nhánh nghiệm duy nhất)
+    x[i] = zero_rectify(s / U[i][i])
+\end{lstlisting}
+Trong triển khai thật, hàm còn xử lý thêm hai trường hợp đặc biệt: hệ vô nghiệm và hệ vô số nghiệm (trả về danh sách rỗng sau khi in thông báo), trước khi đi vào nhánh thế lùi nghiệm duy nhất như đoạn mã trên.
+
+
+\subsubsection{Chiến lược Chọn chốt từng phần (Partial Pivoting)}
+\label{sec:partial_pivoting}
+
+Trong quá trình khử tiến, nếu phần tử chốt $a_{kk}$ có giá trị bằng 0 hoặc rất gần 0, phép chia trong công thức tính hệ số $l_{ik} = a_{ik}/a_{kk}$ sẽ không thể thực hiện được hoặc sẽ gây ra sự khuếch đại sai số làm tròn (round-off error) một cách nghiêm trọng \cite{higham2002}. Hiện tượng này có thể làm cho nghiệm tính ra hoàn toàn sai lệch, ngay cả khi hệ phương trình ban đầu có điều kiện tốt.
+
+Để giải quyết vấn đề này và đảm bảo tính ổn định số học cho thuật toán, ta áp dụng chiến lược \textbf{Chọn chốt từng phần (Partial Pivoting)}. Nguyên tắc của chiến lược này là kỹ thuật chuẩn trong các giáo trình số học tuyến tính \cite{golub,trefethen}.
+
+\paragraph{Định lý 1.1 (Partial Pivoting):} Tại mỗi bước khử thứ $k$ (ứng với cột $k$), thay vì ngay lập tức dùng phần tử $a_{kk}$ làm chốt, ta tiến hành tìm kiếm trong cột $k$, từ dòng $k$ trở xuống, phần tử có trị tuyệt đối lớn nhất.
+\begin{equation}
+    |a_{pk}^{(k)}| = \max_{k \le i \le n} |a_{ik}^{(k)}|
+\end{equation}
+Sau khi tìm được chỉ số dòng $p$ chứa phần tử chốt lớn nhất, ta sẽ hoán đổi toàn bộ Hàng$_k$ và Hàng$_p$. Phần tử $a_{pk}$ (nay đã nằm ở vị trí $(k,k)$) sẽ được dùng làm chốt cho bước khử hiện tại.
+
+Việc hoán đổi này đảm bảo rằng hệ số nhân $l_{ik}$ luôn có trị tuyệt đối nhỏ hơn hoặc bằng 1, từ đó hạn chế tối đa việc các sai số nhỏ bị khuếch đại lên nhiều lần qua các bước tính toán.
+
+Chiến lược này được cài đặt trực tiếp trong hàm \texttt{gaussian\_eliminate} của file \texttt{gaussian.py}. Trước mỗi pha khử, một vòng lặp được thực hiện để tìm dòng có phần tử chốt tối ưu và thực hiện hoán vị nếu cần.
+
+\begin{lstlisting}[language=Python, caption={Trích đoạn logic tìm và hoán đổi chốt từ \texttt{gaussian.py}}]
+# Tại bước khử thứ j, tìm pivot trong cột j từ hàng j trở xuống
+pivot_row = j
+best = abs(M[pivot_row][j])
+
+# Vòng lặp tìm kiếm để thực thi công thức (5)
+for i in range(j + 1, len(A)):
+    if abs(M[i][j]) > best:
+        best, pivot_row = abs(M[i][j]), i
+
+# Nếu tìm thấy dòng tốt hơn, thực hiện hoán đổi
+if pivot_row != j:
+    M[j], M[pivot_row] = M[pivot_row], M[j]
+    swap_count += 1
+\end{lstlisting}
+Đoạn mã trên là minh chứng cho việc cài đặt trung thành chiến lược Partial Pivoting. Biến \texttt{swap\_count} được cập nhật mỗi khi có hoán đổi, phục vụ cho việc tính định thức sau này.
+
+\subsubsection{Các Ứng dụng Mở rộng từ Phép khử Gauss}
+\label{sec:extended_applications}
+Quá trình khử Gauss không chỉ dừng lại ở việc giải hệ phương trình. Ma trận tam giác trên $U$ và các thông số thu được trong quá trình này là nền tảng để giải quyết nhiều bài toán quan trọng khác trong đại số tuyến tính.
+
+\paragraph{Tính định thức (Determinant)}
+Một trong những tính chất cơ bản của định thức là nó thay đổi như thế nào qua các phép biến đổi dòng sơ cấp. Cụ thể, phép cộng một bội số của một dòng vào dòng khác không làm thay đổi định thức, trong khi phép hoán đổi hai dòng sẽ làm đổi dấu của định thức. Do đó, định thức của ma trận $A$ có thể được tính trực tiếp từ ma trận tam giác trên $U$ và số lần hoán đổi dòng $s$ đã được ghi nhận \cite{strang}.
+\begin{equation}
+    \det(A) = (-1)^s \prod_{i=1}^{n} u_{ii}
+    \label{eq:determinant}
+\end{equation}
+Trong đó, $\prod_{i=1}^{n} u_{ii}$ là tích các phần tử trên đường chéo chính của ma trận $U$.
+
+Cách tiếp cận này được cài đặt trong file \texttt{determinant.py}. Hàm \texttt{determinant} gọi hàm \texttt{gaussian\_eliminate} để thu về ma trận $U$ và biến \texttt{swap\_count}. Sau đó, nó chỉ cần tính tích các phần tử trên đường chéo và hiệu chỉnh dấu dựa trên giá trị của \texttt{swap\_count}.
+
+\paragraph{Tìm ma trận nghịch đảo (Inverse Matrix)}
+Để tìm ma trận nghịch đảo $A^{-1}$, ta có thể sử dụng phương pháp khử Gauss-Jordan. Thuật toán này áp dụng trên ma trận mở rộng được tạo bởi việc ghép ma trận $A$ với ma trận đơn vị $I_n$ có cùng kích thước, tức là $[A | I_n]$.
+
+Mục tiêu của Gauss-Jordan là thực hiện các phép biến đổi dòng sơ cấp để đưa vế bên trái (ma trận $A$) về dạng ma trận đơn vị $I_n$. Khi quá trình này hoàn tất, vế bên phải sẽ chính là ma trận nghịch đảo $A^{-1}$. Quá trình này bao gồm hai pha:
+\begin{enumerate}
+    \item \textbf{Khử tiến:} Tương tự khử Gauss, đưa ma trận về dạng tam giác trên $[U | C]$.
+    \item \textbf{Khử lùi:} Tiếp tục biến đổi để triệt tiêu các phần tử nằm phía \textit{trên} đường chéo chính, đồng thời chia mỗi dòng cho phần tử chốt của nó để đường chéo chính chỉ còn lại các số 1.
+\end{enumerate}
+Logic này được cài đặt trong file \texttt{inverse.py}, trong đó các vòng lặp thực hiện cả hai pha khử để biến đổi ma trận $[A | I_n]$ thành $[I_n | A^{-1}]$.
+
+\paragraph{Hạng và các không gian cơ sở (Rank and Basis Spaces)}
+Hạng (rank) của một ma trận được định nghĩa là số chiều của không gian cột (column space) của nó, và cũng bằng số chiều của không gian dòng (row space). Một cách thực hành, hạng của ma trận chính là số lượng phần tử chốt (pivot) trong dạng bậc thang của nó.
+
+Để tìm các cơ sở cho các không gian vector, ta cần đưa ma trận về dạng bậc thang rút gọn (Reduced Row Echelon Form - RREF).
+\begin{itemize}
+    \item \textbf{Cơ sở không gian cột (Column Space):} Các cột trong ma trận \textit{gốc} $A$ tương ứng với các cột chứa pivot trong ma trận RREF tạo thành một cơ sở cho không gian cột.
+    \item \textbf{Cơ sở không gian dòng (Row Space):} Các dòng khác không trong ma trận RREF tạo thành một cơ sở cho không gian dòng.
+    \item \textbf{Cơ sở không gian rỗng (Null Space):} Không gian rỗng của $A$ là tập hợp các nghiệm của hệ $Ax=0$. Ta có thể tìm cơ sở của nó bằng cách giải hệ này từ dạng RREF, biểu diễn các biến cơ bản (pivot variables) qua các biến tự do (free variables).
+\end{itemize}
+Toàn bộ quy trình này, từ việc đưa ma trận về RREF đến việc trích xuất hạng và các cơ sở, được cài đặt trong file \texttt{rank\_basis.py}.
+
+
+\subsection{Thiết kế và Cài đặt Thuật toán}
+\label{sec:implementation_design}
+Kiến trúc mã nguồn của phần này được thiết kế theo hướng module hóa, trong đó mỗi file Python đảm nhiệm một chức năng tính toán riêng biệt. Các hàm chức năng mở rộng đều được xây dựng dựa trên một module lõi chung là phép khử Gauss, đảm bảo tính tái sử dụng và nhất quán. Cụ thể, \texttt{gaussian.py} thực hiện khử tiến và điều phối lời giải, \texttt{back\_substitution.py} xử lý pha thế lùi và phân loại khả năng giải, còn \texttt{determinant.py}, \texttt{inverse.py}, \texttt{rank\_basis.py} lần lượt mở rộng sang định thức, nghịch đảo, và không gian cơ sở.
+
+\subsubsection{Module lõi: Khử tiến và Thế lùi}
+\label{sec:core_modules}
+Đây là hai thành phần trung tâm của bộ giải, hiện thực hóa hai giai đoạn chính của phương pháp giải hệ phương trình tuyến tính.
+
+\paragraph{Hàm \texttt{gaussian\_eliminate} (\texttt{gaussian.py})}
+Hàm này chịu trách nhiệm thực hiện pha khử tiến, tích hợp sẵn chiến lược Partial Pivoting để đảm bảo độ ổn định. Luồng xử lý chi tiết của hàm được cài đặt như sau:
+\begin{enumerate}
+    \item \textbf{Tạo ma trận tăng cường:} Ghép ma trận hệ số \texttt{A} và vector vế phải \texttt{b} thành một ma trận duy nhất \texttt{M}.
+    \item \textbf{Vòng lặp theo cột với chỉ số dòng chốt riêng:} Thuật toán duyệt qua từng cột \texttt{j}, đồng thời quản lý một biến \texttt{pivot\_row} độc lập để hỗ trợ cả ma trận vuông và ma trận chữ nhật.
+    \item \textbf{Tìm và hoán đổi chốt (Partial Pivoting):} Tại mỗi cột \texttt{j}, quét từ \texttt{pivot\_row} trở xuống để tìm dòng có phần tử lớn nhất theo trị tuyệt đối. Nếu khác dòng hiện tại, thực hiện hoán đổi và tăng \texttt{swap\_count}.
+    \item \textbf{Xử lý cột không có pivot hữu hiệu:} Nếu pivot xấp xỉ 0 (theo \texttt{is\_zero}), hàm bỏ qua cột đó. Nếu pivot rất nhỏ ($<10^{-8}$), hàm phát cảnh báo hệ có thể điều kiện kém.
+    \item \textbf{Khử các phần tử dưới chốt:} Với mỗi dòng bên dưới, tính hệ số \texttt{lik} và cập nhật từ cột hiện tại đến hết ma trận tăng cường, có chuẩn hóa sai số nhỏ bằng \texttt{zero\_rectify}.
+    \item \textbf{Tách kết quả và trả về:} Từ \texttt{M}, tách ra \texttt{U} và vế phải \texttt{c}; nếu hệ vuông thì gọi \texttt{back\_substitution(U, c)} để lấy \texttt{x}. Hàm trả về bộ ba \texttt{(U, x, swap\_count)}.
+\end{enumerate}
+
+\begin{lstlisting}[language=Python, caption={Trích đoạn mã nguồn lõi từ \texttt{gaussian.py}}]
+def gaussian_eliminate(A, b):
+    m = len(A)
+    n = len(A[0])
+    M = [list(A[i]) + [float(b[i])] for i in range(m)]
+    swap_count = 0
+
+    pivot_row = 0
+    for j in range(n):
+        if pivot_row >= m:
+            break
+
+        p = pivot_row
+        best = abs(M[pivot_row][j])
+        for i in range(pivot_row + 1, m):
+            if abs(M[i][j]) > best:
+                best = abs(M[i][j])
+                p = i
+
+        pivot = M[p][j]
+        if is_zero(pivot):
+            continue
+        if p != pivot_row:
+            M[pivot_row], M[p] = M[p], M[pivot_row]
+            swap_count += 1
+
+        pivot = M[pivot_row][j]
+        for i in range(pivot_row + 1, m):
+            if is_zero(M[i][j]):
+                continue
+            lik = M[i][j] / pivot
+            for k in range(j, n + 1):
+                M[i][k] = zero_rectify(M[i][k] - lik * M[pivot_row][k])
+
+        pivot_row += 1
+
+    U = [row[:n] for row in M]
+    c = [row[n] for row in M]
+    x = back_substitution(U, c) if m == n else []
+    return U, x, swap_count
 \end{lstlisting}
 
-\subsection{Kiểm thử và đối chiếu kết quả}
+\paragraph{Hàm \texttt{back\_substitution} (\texttt{back\_substitution.py})}
+Sau khi có ma trận tam giác trên từ hàm \texttt{gaussian\_eliminate}, hàm này được gọi để thực hiện pha thế lùi và tìm nghiệm. Luồng xử lý của hàm như sau:
+\begin{enumerate}
+    \item \textbf{Kiểm tra khả giải theo cấu trúc hệ:} Hàm phát hiện dòng vô nghiệm (dòng hệ số toàn 0 nhưng vế phải khác 0) và nhận diện biến tự do khi đường chéo có phần tử 0.
+    \item \textbf{Nhánh vô số nghiệm:} Nếu có biến tự do, hàm dựng một nghiệm riêng và các vector cơ sở không gian nghiệm để in công thức nghiệm tổng quát, sau đó trả về danh sách rỗng theo quy ước của bộ kiểm thử.
+    \item \textbf{Nhánh nghiệm duy nhất:} Nếu không có biến tự do, hàm thế lùi từ dưới lên để thu vector nghiệm duy nhất.
+\end{enumerate}
 
-\subsubsection{Phương pháp đo lường sai số}
-Để đánh giá tính đúng đắn và độ ổn định của thuật toán Khử Gauss tự cài đặt (Custom Solver), nhóm không chỉ so sánh trực tiếp vector nghiệm $x$ thu được với kết quả từ thư viện \texttt{numpy.linalg.solve}, mà còn sử dụng \textbf{Chuẩn L2 của vector phần dư (Residual Norm)} làm thước đo chính:
-\begin{equation}
-    e = ||r||_2 = ||b - Ax||_2 = \sqrt{\sum_{i=1}^{n} (b_i - (Ax)_i)^2}
-\end{equation}
-Việc đo lường sai số phần dư giúp phản ánh chính xác chất lượng của nghiệm đối với cấu trúc ma trận $A$ ban đầu, đặc biệt hữu ích khi đánh giá các hệ phương trình nhạy cảm với nhiễu.
+\begin{lstlisting}[language=Python, caption={Mã nguồn hàm thế lùi từ \texttt{back\_substitution.py}}]
+def back_substitution(U, c):
+    n = len(U)
+    x = [0.0] * n
 
-\subsubsection{Kịch bản kiểm thử và kết quả thực nghiệm}
-Nhóm đã xây dựng một bộ Test Suite gồm 7 kịch bản, bao phủ từ các trường hợp cơ bản đến các "điểm chết" của chuẩn biểu diễn dấu phẩy động IEEE 754 (Double Precision).
+    free_vars = [i for i in range(n) if is_zero(U[i][i])]
+    for i in range(n):
+        if all(is_zero(U[i][j]) for j in range(n)) and not is_zero(c[i]):
+            print("Hệ vô nghiệm (No solution).")
+            return []
 
-\vspace{0.3cm}
+    if free_vars:
+        # In nghiệm tổng quát rồi trả [] theo quy ước test
+        return []
+
+    # Nhánh nghiệm duy nhất
+    for i in range(n - 1, -1, -1):
+        s = c[i] - sum(U[i][j] * x[j] for j in range(i + 1, n))
+        x[i] = zero_rectify(s / U[i][i])
+    return x
+\end{lstlisting}
+
+\subsubsection{Module mở rộng: Định thức, Nghịch đảo, Hạng và Cơ sở}
+\label{sec:module_mo_rong}
+Ba module \texttt{determinant.py}, \texttt{inverse.py}, và \texttt{rank\_basis.py} được xây dựng theo cùng một triết lý: tái sử dụng trực tiếp logic khử Gauss/Gauss-Jordan đã cài đặt ở module lõi, từ đó mở rộng sang các bài toán đại số tuyến tính khác mà không phụ thuộc vào \texttt{numpy.linalg} \cite{golub,trefethen}.
+
+\paragraph{\texttt{determinant.py}: Tính định thức bằng cách tái sử dụng khử Gauss}
+Hàm \texttt{determinant(A)} không tự viết lại thuật toán khử, mà gọi trực tiếp:
 \begin{center}
-    \renewcommand{\arraystretch}{1.4}
-    \begin{tabular}{|c|p{0.3\textwidth}|p{0.3\textwidth}|c|}
-        \hline
-        \textbf{STT} & \textbf{Kịch bản kiểm thử (Test Case)} & \textbf{Ý nghĩa kiểm tra} & \textbf{Sai số L2 ($e$)} \\ \hline
-        1 & Hệ cơ bản (Nghiệm nguyên) & Tính đúng đắn của thuật toán & $0.00e+00$ \\ \hline
-        2 & Nhiễu làm tròn (Round-off) & Phép chia cho số vô hạn tuần hoàn & $5.55e-17$ \\ \hline
-        3 & Cần Partial Pivoting & Khử phần tử chốt (pivot) tiệm cận 0 & $0.00e+00$ \\ \hline
-        4 & Chênh lệch hệ số khổng lồ & Hiện tượng nuốt số (Swamping) & $0.00e+00$ \\ \hline
-        5 & Hệ điều kiện kém (Near-singular) & Khuếch đại sai số do hai dòng gần song song & $2.22e-16$ \\ \hline
-        6 & Ma trận Hilbert 3x3 & Ma trận có số điều kiện lớn & $1.11e-16$ \\ \hline
-        7 & Ma trận suy biến & Khả năng bắt lỗi hệ vô số nghiệm/vô nghiệm & Không có nghiệm \\ \hline
-    \end{tabular}
+    \texttt{U, \_, swap\_count = gaussian\_eliminate(A, b\_dummy)}
 \end{center}
-\vspace{0.3cm}
+trong đó \texttt{b\_dummy} là vector 0 có cùng số hàng với $A$. Cách làm này giúp dùng lại toàn bộ cơ chế \textit{Partial Pivoting} đã được kiểm thử ở module \texttt{gaussian.py}.
 
-\subsubsection{Phân tích các vấn đề và hiện tượng sai số}
+Sau khi có ma trận tam giác trên $U$, hàm tính tích đường chéo $\prod_i U_{ii}$ và hiệu chỉnh dấu theo số lần hoán đổi dòng \texttt{swap\_count}. Điều này bám sát công thức định thức đã nêu ở \eqref{eq:determinant}:
+\begin{equation}
+    \det(A) = (-1)^s \prod_{i=1}^{n} U_{ii}
+\end{equation}
+với $s$ là số lần đổi chỗ dòng. Cuối cùng, giá trị được đưa qua \texttt{zero\_rectify} để triệt tiêu nhiễu số học rất nhỏ.
 
-Dựa trên kết quả thực nghiệm, nhóm rút ra các phân tích sâu sắc về bản chất của tính toán số học trên máy tính:
+\begin{lstlisting}[language=Python, caption={Trích đoạn lõi trong \texttt{determinant.py}}]
+def determinant(A):
+    n = len(A)
+    b_dummy = [0.0] * n
+    U, _, swap_count = gaussian_eliminate(A, b_dummy)
 
-\textbf{a) Vấn đề 1: Nhiễu làm tròn số} \\
-Ở Kịch bản 1, sai số trả về là $0.00$. Tuy nhiên, ở Kịch bản 2, dù thuật toán chạy đúng, sai số phần dư vẫn nhích lên mức $5.55 \times 10^{-17}$. Nguyên nhân là do các phân số như $1/3$ hoặc số thập phân như $0.1$ khi chuyển sang hệ nhị phân sẽ trở thành chuỗi vô hạn tuần hoàn. Máy tính bị giới hạn bởi bộ nhớ 64-bit nên buộc phải cắt bớt phần đuôi, sinh ra \textbf{Machine Epsilon} (độ phân giải máy tính $\approx 2.22 \times 10^{-16}$). Mức sai số này là giới hạn vật lý của phần cứng, không phải lỗi của thuật toán.
+    det_a = 1.0
+    for i in range(n):
+        det_a *= U[i][i]
+    if swap_count % 2 != 0:
+        det_a = -det_a
+    return zero_rectify(det_a)
+\end{lstlisting}
 
-\textbf{b) Vấn đề 2: Hiện tượng Swamping và vai trò của Partial Pivoting} \\
-Ở Kịch bản 4, hệ phương trình chứa phép cộng giữa một số khổng lồ ($10^{15}$) và một số rất nhỏ ($1.0$). Nếu thuật toán giữ nguyên dòng đầu tiên làm phần tử chốt, số $1.0$ sẽ mất hoàn toàn trong cấu trúc bộ nhớ \textit{Mantissa}, dẫn đến sự triệt tiêu. Nhờ áp dụng chiến lược \textbf{Partial Pivoting} (Hoán đổi dòng), thuật toán đã đưa hệ số an toàn nhất lên làm chốt, giúp triệt tiêu hoàn toàn sai số và giữ được $e = 0.00$.
+\paragraph{\texttt{inverse.py}: Cài đặt Gauss-Jordan theo hai pha khử}
+Hàm \texttt{inverse(A)} cài đặt đúng tinh thần Gauss-Jordan trên ma trận mở rộng $[A|I]$ \cite{strang,golub}:
+\begin{enumerate}
+    \item \textbf{Pha khử dưới đường chéo (forward elimination):} tại mỗi cột $i$, thuật toán tìm \texttt{pivot\_row} có trị tuyệt đối lớn nhất (partial pivoting), hoán đổi dòng nếu cần, rồi khử các phần tử phía dưới pivot để tạo dạng tam giác trên.
+    \item \textbf{Pha khử trên đường chéo (backward elimination):} lặp ngược từ dưới lên, triệt tiêu các phần tử phía trên pivot để đưa nửa trái của ma trận mở rộng về dạng đường chéo.
+\end{enumerate}
+Sau hai pha, mỗi dòng được chia cho phần tử chéo tương ứng để chuẩn hóa đường chéo về 1; khi đó nửa trái thành $I$ và nửa phải chính là $A^{-1}$.
 
-\textbf{c) Vấn đề 3: Sự khuếch đại sai số ở Hệ điều kiện kém (Ill-conditioned System)} \\
-Đây là hiện tượng Toán học đáng chú ý nhất ở Kịch bản 5 và 6. Ở Kịch bản 5, ma trận chứa hai hàng gần như song song (hệ số lệch nhau ở chữ số thập phân thứ 15). Dù nhiễu làm tròn ở cấp số $10^{-16}$, nhưng do \textbf{Số điều kiện (Condition Number)} của ma trận quá khổng lồ, nó đã đóng vai trò như một bộ khuếch đại tín hiệu xấu.
-Hậu quả là nghiệm tính ra bị "trôi dạt" (Drift) sai lệch hẳn so với nghiệm lý thuyết, dù khi thế ngược vào phương trình thì sai số phần dư $e$ vẫn rất nhỏ ($2.22 \times 10^{-16}$). Điều này khẳng định: Với hệ điều kiện kém, sai số dư nhỏ không đồng nghĩa với vector nghiệm có độ chính xác cao.
+\begin{lstlisting}[language=Python, caption={Hai pha khử trong \texttt{inverse.py}}]
+# Bước 1: khử dưới đường chéo
+for i in range(n):
+    pivot_row = i
+    for r in range(i + 1, n):
+        if abs(matrix[r][i]) > abs(matrix[pivot_row][i]):
+            pivot_row = r
+    if is_zero(matrix[pivot_row][i]):
+        raise ValueError("Matrix is singular")
+    if pivot_row != i:
+        matrix[i], matrix[pivot_row] = matrix[pivot_row], matrix[i]
+    for j in range(i + 1, n):
+        factor = matrix[j][i] / matrix[i][i]
+        for k in range(i, 2 * n):
+            matrix[j][k] -= factor * matrix[i][k]
 
-\vspace{0.3cm}
-\textbf{Kết luận Phần 1:} Đồ thị log-log đo lường hiệu năng (được trình bày trong Jupyter Notebook) cho thấy đường sai số của thuật toán tự cài đặt hoàn toàn trùng khớp và bám sát với thư viện \texttt{LAPACK} siêu tối ưu của NumPy. Thuật toán đã xử lý thành công mọi góc khuất của hệ thống số dấu phẩy động.
+# Bước 2: khử trên đường chéo
+for i in range(n - 1, -1, -1):
+    for j in range(i - 1, -1, -1):
+        factor = matrix[j][i] / matrix[i][i]
+        for k in range(i, 2 * n):
+            matrix[j][k] -= factor * matrix[i][k]
+\end{lstlisting}
 
-\begin{figure}[h]
+\paragraph{\texttt{rank\_basis.py}: Từ RREF đến hạng và các cơ sở}
+Hàm \texttt{to\_rref(A)} đưa ma trận về dạng bậc thang rút gọn (RREF) bằng Gauss-Jordan với chọn chốt từng phần theo cột \cite{strang,mit1806}. Trong mỗi cột:
+\begin{itemize}
+    \item chọn dòng có phần tử lớn nhất theo trị tuyệt đối làm pivot,
+    \item chuẩn hóa dòng pivot để phần tử chốt bằng 1,
+    \item khử toàn bộ các phần tử khác 0 trong cùng cột (cả trên và dưới pivot).
+\end{itemize}
+Hàm trả về \texttt{rref} và danh sách \texttt{pivot\_cols}.
+
+Sau đó, hàm \texttt{rank\_and\_basis(A)} trích xuất trực tiếp các đại lượng đại số tuyến tính từ kết quả này:
+\begin{enumerate}
+    \item \textbf{Hạng (rank):} bằng số lượng cột chốt, tức \texttt{len(pivot\_cols)}.
+    \item \textbf{Cơ sở không gian cột (column basis):} lấy các cột của ma trận gốc $A$ tại vị trí cột chốt.
+    \item \textbf{Cơ sở không gian hàng (row basis):} lấy các dòng khác 0 của ma trận RREF.
+    \item \textbf{Cơ sở không gian null (null basis):} xác định các cột tự do, đặt từng biến tự do bằng 1 rồi suy ra biến chốt theo quan hệ trong RREF.
+\end{enumerate}
+
+\begin{lstlisting}[language=Python, caption={Luồng \texttt{to\_rref} và \texttt{rank\_and\_basis} trong \texttt{rank\_basis.py}}]
+rref, pivot_cols = to_rref(A, tol)
+rank = len(pivot_cols)
+
+# Column basis: lấy từ ma trận gốc tại các cột pivot
+col_basis = []
+for j in pivot_cols:
+    col_basis.append([A[i][j] for i in range(n_rows)])
+
+# Row basis: các dòng khác 0 trong RREF
+row_basis = [row for row in rref
+             if any(not ((abs(x) <= tol) if tol is not None else is_zero(x))
+                    for x in row)]
+
+# Null basis: dựng từ các biến tự do
+free_cols = [j for j in range(n_cols) if j not in pivot_cols]
+for free_j in free_cols:
+    special_solution = [0.0] * n_cols
+    special_solution[free_j] = 1.0
+    for i, p_col in enumerate(pivot_cols):
+        special_solution[p_col] = -rref[i][free_j]
+    null_basis.append(special_solution)
+\end{lstlisting}
+
+Nhờ cách tổ chức này, mục 1.3.2 không chỉ mô tả lý thuyết mà còn cho thấy rõ mối liên kết trực tiếp giữa mô hình toán học và hiện thực mã nguồn của từng module mở rộng.
+
+\subsection{Kiểm thử và Phân tích Kết quả}
+
+\subsubsection{Môi trường và Phương pháp luận}
+\begin{itemize}
+    \item \textbf{Môi trường:} Python 3.x. Thư viện \texttt{NumPy} được dùng với vai trò duy nhất là để so sánh và kiểm chứng kết quả \cite{numpy_docs}.
+    \item \textbf{Bộ kiểm thử:} Một bộ gồm 7 kịch bản kiểm thử được định nghĩa trong \texttt{test\_cases.py}, được điều phối bởi \texttt{run\_all\_tests.py}. Các kịch bản này bao phủ các trường hợp từ cơ bản, cần pivoting, đến các hệ nhạy cảm về số học.
+    \item \textbf{Thước đo sai số:} Sử dụng chuẩn L2 của vector phần dư (Residual Norm) $e = ||b - Ax||_2$, được cài đặt trong \texttt{verify\_solution.py}, để đánh giá chất lượng nghiệm tìm được.
+\end{itemize}
+
+\subsubsection{Kết quả thực nghiệm và Phân tích chi tiết}
+Kết quả từ bộ kiểm thử được tổng hợp và phân tích trong bảng dưới đây.
+
+\begin{table}[h!]
+\centering
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{|c|p{0.25\textwidth}|p{0.35\textwidth}|c|}
+\hline
+\textbf{STT} & \textbf{Kịch bản kiểm thử (Test Case)} & \textbf{Ý nghĩa và Phân tích} & \textbf{Sai số L2 ($e$)} \\ \hline
+1 & Hệ cơ bản (Nghiệm nguyên) & \textit{[TODO: Mô tả ngắn]} & \textit{0.00e+00} \\ \hline
+2 & Cần Partial Pivoting & \textit{[TODO: Mô tả ngắn]} & \textit{0.00e+00} \\ \hline
+3 & Nhiễu làm tròn (Round-off) & \textit{[TODO: Mô tả ngắn]} & \textit{$\sim 5.55e-17$} \\ \hline
+4 & Chênh lệch hệ số khổng lồ (Swamping) & \textit{[TODO: Mô tả ngắn]} & \textit{0.00e+00} \\ \hline
+5 & Hệ điều kiện kém (Near-singular) & \textit{[TODO: Mô tả ngắn]} & \textit{$\sim 2.22e-16$} \\ \hline
+6 & Ma trận Hilbert 3x3 & \textit{[TODO: Mô tả ngắn]} & \textit{$\sim 1.11e-16$} \\ \hline
+7 & Ma trận suy biến & \textit{[TODO: Mô tả ngắn]} & \textit{Bắt lỗi} \\ \hline
+\end{tabular}
+\caption{Tổng hợp kết quả kiểm thử và sai số trên các kịch bản.}
+\end{table}
+
+\begin{figure}[h!]
     \centering
-    \includegraphics[width=\textwidth]{assets/part1-error.png}
-    \caption{Đánh giá độ ổn định số học: Custom Gaussian vs NumPy}
+    % \includegraphics[width=\textwidth]{assets/part1-error.png}
+    \caption{Đánh giá độ ổn định số học: Custom Gaussian vs NumPy. [TODO: Chèn ảnh của bạn vào đây]}
     \label{fig:part1_demo}
 \end{figure}
+
+\subsection{Tổng kết và Đánh giá}
+\begin{itemize}
+    \item \textbf{Tóm tắt kết quả:} Khẳng định đã hoàn thành cài đặt và kiểm thử các chức năng theo yêu cầu của đồ án. Thuật toán tự cài đặt cho thấy độ chính xác và ổn định tương đương với thư viện chuẩn \texttt{numpy.linalg} trong các kịch bản thử nghiệm.
+    \item \textbf{Bài học rút ra:}
+    \begin{itemize}
+        \item Tầm quan trọng của \textit{Partial Pivoting} trong việc đảm bảo ổn định số học.
+        \item Sự khác biệt giữa sai số tiến (forward error) và sai số ngược (backward error), đặc biệt với hệ có số điều kiện lớn.
+        \item Sự tồn tại không thể tránh khỏi của sai số làm tròn trong tính toán máy tính.
+    \end{itemize}
+    \item \textbf{Hạn chế và Hướng phát triển:} Các phương pháp trực tiếp như khử Gauss và Gauss-Jordan có chi phí tính toán bậc ba theo kích thước ma trận ($\mathcal{O}(n^3)$), nên chưa phù hợp khi mở rộng lên dữ liệu lớn. Ở các phần sau, nhóm sẽ khảo sát thêm các phương pháp lặp và các kỹ thuật dựa trên phân rã để cân bằng giữa độ chính xác số học và hiệu năng thực thi.
+\end{itemize}
